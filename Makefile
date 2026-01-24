@@ -1,29 +1,28 @@
-.PHONY: build run stop clean
+.PHONY: build up down logs shell
 
 # Build the Docker image
 build:
-	docker build -t koko-pic-api .
+	docker-compose build
 
-# Run the container
-run:
-	docker run -d -p 8000:8000 --name koko-pic-api-container koko-pic-api
+# Start services with Docker Compose
+up:
+	docker-compose up -d
 
-# Stop and remove the container
-stop:
-	docker stop koko-pic-api-container || true
-	docker rm koko-pic-api-container || true
-
-# Clean up - remove the image
-clean: stop
-	docker rmi koko-pic-api || true
-
-# Rebuild and restart
-restart: clean build run
+# Stop services
+down:
+	docker-compose down
 
 # View logs
 logs:
-	docker logs koko-pic-api-container
+	docker-compose logs -f
 
-# Shell into the container
+# Shell into the app container
 shell:
-	docker exec -it koko-pic-api-container /bin/bash
+	docker-compose exec app /bin/sh
+
+# Rebuild and restart
+restart: down up
+
+# Show status of containers
+ps:
+	docker-compose ps
