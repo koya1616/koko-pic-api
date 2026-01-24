@@ -1,4 +1,3 @@
-use axum::{response::Html, routing::get, Router};
 use sqlx::PgPool;
 use tokio::signal;
 
@@ -18,9 +17,7 @@ async fn main() -> anyhow::Result<()> {
 
   println!("Database migrations applied successfully");
 
-  let app = Router::new()
-    .route("/", get(hello_world_handler))
-    .with_state(pool.clone());
+  let app = koko_pic_api::app_with_state(pool);
 
   let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
@@ -32,10 +29,6 @@ async fn main() -> anyhow::Result<()> {
     .unwrap();
 
   Ok(())
-}
-
-async fn hello_world_handler() -> Html<String> {
-  Html("<h1>Hello, World!</h1>".to_string())
 }
 
 async fn shutdown_signal() {
