@@ -6,16 +6,29 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/postgres
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
       - PORT=8000
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - postgres
     volumes:
       - .:/app
       - cargo-cache:/usr/local/cargo/registry
       - target-cache:/app/target
     restart: unless-stopped
 
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
 volumes:
   cargo-cache:
   target-cache:
+  postgres_data:
