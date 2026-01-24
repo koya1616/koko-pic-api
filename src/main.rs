@@ -1,11 +1,26 @@
 use axum::{response::Html, routing::get, Router};
+use sqlx::PgPool;
 use tokio::signal;
+
+use dotenvy::dotenv;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+  dotenv().ok();
+
   tracing_subscriber::fmt::init();
 
-  let app = Router::new().route("/", get(hello_world_handler));
+  let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+  let pool = PgPool::connect(&database_url).await?;
+
+  sqlx::migrate!("./migrations").run(&pool).await?;
+
+  println!("Database migrations applied successfully");
+
+  let app = Router::new()
+    .route("/", get(hello_world_handler))
+    .with_state(pool.clone());
 
   let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 

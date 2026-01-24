@@ -13,37 +13,12 @@ A Rust web API built with Axum, async-graphql, and sqlx.
 
 ### Using Docker
 
-Start your local Supabase instance first:
-
-```bash
-supabase start
-```
-
-Then run the application with Docker Compose:
-
 ```bash
 make up
 ```
 
-### Local Development
-
-Make sure you have Rust installed, then:
+If you need to run Cargo commands inside the container, use:
 
 ```bash
-cargo run
+docker exec koko-pic-api-app-1 cargo <subcommand>
 ```
-
-The API will be available at `http://localhost:8000`.
-
-GraphQL Playground will be available at `http://localhost:8000/playground`.
-
-## Environment Variables
-
-- `DATABASE_URL` - Connection string for your database (defaults to connect to local Supabase)
-- `PORT` - Port to run the server on (defaults to 8000)
-
-## API Endpoints
-
-- `GET /health` - Health check endpoint
-- `GET /playground` - GraphQL Playground interface
-- `POST /graphql` - GraphQL endpoint
