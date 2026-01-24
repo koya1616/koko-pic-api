@@ -25,6 +25,9 @@ restart:
 ps:
 	docker compose ps
 
+check:
+	docker exec koko-pic-api-app-1 sh -c "cargo fmt && cargo clippy -- -D warnings && cargo test"
+
 # ============================================
 # 本番用
 # ============================================
