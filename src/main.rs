@@ -1,54 +1,18 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Html,
-    routing::{get, get_service},
-    Router,
-};
-use async_graphql::{
-    Context, EmptyMutation, EmptySubscription, Object, Schema, SimpleObject,
-};
-use async_graphql_axum::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
-use axum::response::Response;
-use std::sync::Arc;
+use axum::{response::Html, routing::get, Router};
 use tokio::signal;
-
-// Define a simple Query object for GraphQL
-struct QueryRoot;
-
-#[Object]
-impl QueryRoot {
-    async fn hello(&self, ctx: &Context<'_>) -> String {
-        "Hello, World!".to_string()
-    }
-}
-
-// Define a simple schema type
-type AppSchema = Schema<QueryRoot, EmptyMutation, EmptySubscription>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
-    // Create the GraphQL schema
-    let schema = Schema::build(QueryRoot, EmptyMutation, EmptySubscription).finish();
+    // Create the Axum app with a single route that returns "Hello, World!"
+    let app = Router::new().route("/", get(hello_world_handler));
 
-    // Create the Axum app
-    let app = Router::new()
-        // GraphQL endpoint
-        .route("/graphql", get(graphql_handler).post(graphql_handler))
-        // GraphQL playground
-        .route("/playground", get(playground_handler))
-        // Health check endpoint
-        .route("/health", get(health_handler));
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8000")
-        .await
-        .unwrap();
-    
     println!("Server running on http://0.0.0.0:8000");
-    
+
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
@@ -57,24 +21,9 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-// GraphQL handler
-async fn graphql_handler(
-    State(schema): State<AppSchema>,
-    req: GraphQLRequest,
-) -> GraphQLResponse {
-    schema.execute(req.into_inner()).await.into()
-}
-
-// GraphQL playground handler
-async fn playground_handler() -> Html<String> {
-    Html(async_graphql::http::playground_source(
-        async_graphql::http::PlaygroundConfig::new("/graphql"),
-    ))
-}
-
-// Health check handler
-async fn health_handler() -> StatusCode {
-    StatusCode::OK
+// Handler that returns "Hello, World!"
+async fn hello_world_handler() -> Html<String> {
+    Html("<h1>Hello, World!</h1>".to_string())
 }
 
 // Graceful shutdown signal

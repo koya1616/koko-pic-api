@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -10,12 +10,4 @@ services:
       - PORT=8000
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    volumes:
-      - .:/app
-      - cargo-cache:/usr/local/cargo/registry
-      - target-cache:/app/target
     restart: unless-stopped
-
-volumes:
-  cargo-cache:
-  target-cache:

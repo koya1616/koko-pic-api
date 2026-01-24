@@ -1,28 +1,39 @@
-.PHONY: build up down logs shell
+.PHONY: build up down logs shell restart ps build-prod up-prod down-prod
 
-# Build the Docker image
+# ============================================
+# 開発用
+# ============================================
+
 build:
 	docker compose build
 
-# Start services with Docker Compose
 up:
-	docker compose up -d
+	docker compose up
 
-# Stop services
 down:
 	docker compose down
 
-# View logs
 logs:
 	docker compose logs -f
 
-# Shell into the app container
 shell:
-	docker compose exec app /bin/sh
+	docker compose exec app /bin/bash
 
-# Rebuild and restart
-restart: down up
+restart:
+	docker compose up --build
 
-# Show status of containers
 ps:
 	docker compose ps
+
+# ============================================
+# 本番用
+# ============================================
+
+build-prod:
+	docker compose -f docker-compose.prod.yml build
+
+up-prod:
+	docker compose -f docker-compose.prod.yml up -d
+
+down-prod:
+	docker compose -f docker-compose.prod.yml down
