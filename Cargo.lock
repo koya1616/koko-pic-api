@@ -205,7 +205,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fac4744fb15ae8337dc853fee7fb3f4e48c0fbaa23d0afe49c447b4fab126118"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
+ "serde",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -927,15 +930,19 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-macros",
+ "chrono",
  "config",
  "dotenvy",
+ "hex",
  "http-body-util",
  "hyper-util",
  "mime",
  "serde",
  "serde_json",
+ "sha2",
  "sqlx",
  "tokio",
+ "tokio-test",
  "tower",
  "tracing",
  "tracing-subscriber",
@@ -2003,6 +2010,17 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "tokio-test"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f6d24790a10a7af737693a3e8f1d03faef7e6ca0cc99aae5066f533766de545"
+dependencies = [
+ "futures-core",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

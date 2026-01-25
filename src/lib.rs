@@ -1,12 +1,26 @@
 use axum::{response::Html, routing::get, Router};
 use sqlx::PgPool;
 
+pub mod handlers;
+pub mod models;
+
 pub fn router() -> Router<()> {
   Router::new().route("/", get(hello_world_handler))
 }
 
 pub fn app_with_state(pool: PgPool) -> Router {
-  Router::new().route("/", get(hello_world_handler)).with_state(pool)
+  Router::new()
+    .route("/", get(hello_world_handler))
+    .nest("/api", api_routes())
+    .with_state(pool)
+}
+
+fn api_routes() -> Router<PgPool> {
+  Router::new().nest("/v1", v1_routes())
+}
+
+fn v1_routes() -> Router<PgPool> {
+  Router::new().merge(handlers::user_routes())
 }
 
 pub async fn hello_world_handler() -> Html<String> {
