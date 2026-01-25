@@ -31,7 +31,7 @@ jobs:
   create_neon_branch:
     name: Create Neon Branch
     outputs:
-      db_url_with_pooler: ${{ steps.create_neon_branch.outputs.db_url_with_pooler }}
+      db_url: ${{ steps.create_neon_branch.outputs.db_url }}
     needs: setup
     if: |
       github.event.action == 'synchronize'
@@ -50,22 +50,6 @@ jobs:
           branch_name: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
-
-      - name: Debug - Check step outputs
-        run: |
-          echo "Checking if db_url_with_pooler output exists..."
-          if [ -n "${{ steps.create_neon_branch.outputs.db_url_with_pooler }}" ]; then
-            echo "db_url_with_pooler is set"
-          else
-            echo "db_url_with_pooler is EMPTY"
-          fi
-          echo "---"
-          echo "Checking if db_url output exists..."
-          if [ -n "${{ steps.create_neon_branch.outputs.db_url }}" ]; then
-            echo "db_url is set"
-          else
-            echo "db_url is EMPTY"
-          fi
 
   deploy:
     name: Build and Deploy
@@ -101,18 +85,9 @@ jobs:
         with:
           api_token: "${{ secrets.KOYEB_API_TOKEN }}"
 
-      - name: Debug - Check DATABASE_URL
-        run: |
-          if [ -z "${{ needs.create_neon_branch.outputs.db_url_with_pooler }}" ]; then
-            echo "ERROR: db_url_with_pooler is empty!"
-            exit 1
-          else
-            echo "db_url_with_pooler is set (value hidden)"
-          fi
-
       - name: Update Koyeb service with DATABASE_URL
         run: |
-          koyeb service update unknown-damselfly/koko-pic-api --env "DATABASE_URL=${{ needs.create_neon_branch.outputs.db_url_with_pooler }}"
+          koyeb service update unknown-damselfly/koko-pic-api --env "DATABASE_URL=${{ needs.create_neon_branch.outputs.db_url }}"
 
       - name: Redeploy to Koyeb
         run: |
