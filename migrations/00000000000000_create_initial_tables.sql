@@ -1,0 +1,11 @@
+-- SQLx requires at least one migration file
+-- This is an empty migration that does nothing
+-- It just satisfies the requirement for a migration file
+
+-- Add your actual table creation statements here when needed
+-- For example:
+-- CREATE TABLE IF NOT EXISTS users (
+--     id SERIAL PRIMARY KEY,
+--     name VARCHAR(255) NOT NULL,
+--     email VARCHAR(255) UNIQUE NOT NULL
+-- );
