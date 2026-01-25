@@ -38,7 +38,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/koko-pic-api:dev
+            ${{ secrets.DOCKERHUB_USERNAME }}/koko-pic-api:latest
 
       # -----------------------
       # main → GHCR
@@ -61,15 +61,23 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/koko-pic-api:latest
 
       # -----------------------
-      # Koyeb deploy (main only)
+      # Koyeb deploy (dev only)
       # -----------------------
       - name: Install and configure Koyeb CLI
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/dev'
         uses: koyeb-community/koyeb-actions@v2
         with:
           api_token: "${{ secrets.KOYEB_API_TOKEN }}"
 
       - name: Redeploy to Koyeb
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/dev'
         run: |
           koyeb service redeploy unknown-damselfly/koko-pic-api
+
+      # -----------------------
+      # Render deploy hook (main only)
+      # -----------------------
+      - name: Trigger Render deploy hook
+        if: github.ref == 'refs/heads/main'
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
