@@ -85,6 +85,15 @@ jobs:
         with:
           api_token: "${{ secrets.KOYEB_API_TOKEN }}"
 
+      - name: Debug - Check DATABASE_URL
+        run: |
+          if [ -z "${{ needs.create_neon_branch.outputs.db_url_with_pooler }}" ]; then
+            echo "ERROR: db_url_with_pooler is empty!"
+            exit 1
+          else
+            echo "db_url_with_pooler is set (value hidden)"
+          fi
+
       - name: Update Koyeb service with DATABASE_URL
         run: |
           koyeb service update unknown-damselfly/koko-pic-api --env "DATABASE_URL=${{ needs.create_neon_branch.outputs.db_url_with_pooler }}"
