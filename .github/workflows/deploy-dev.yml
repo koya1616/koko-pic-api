@@ -51,6 +51,22 @@ jobs:
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
 
+      - name: Debug - Check step outputs
+        run: |
+          echo "Checking if db_url_with_pooler output exists..."
+          if [ -n "${{ steps.create_neon_branch.outputs.db_url_with_pooler }}" ]; then
+            echo "db_url_with_pooler is set"
+          else
+            echo "db_url_with_pooler is EMPTY"
+          fi
+          echo "---"
+          echo "Checking if db_url output exists..."
+          if [ -n "${{ steps.create_neon_branch.outputs.db_url }}" ]; then
+            echo "db_url is set"
+          else
+            echo "db_url is EMPTY"
+          fi
+
   deploy:
     name: Build and Deploy
     needs: [setup, create_neon_branch]
