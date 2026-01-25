@@ -28,10 +28,8 @@ jobs:
         id: branch_name
         uses: tj-actions/branch-names@v8
 
-  create_neon_branch:
-    name: Create Neon Branch
-    outputs:
-      db_url: ${{ steps.create_neon_branch.outputs.db_url }}
+  deploy:
+    name: Build and Deploy
     needs: setup
     if: |
       github.event.action == 'synchronize'
@@ -51,15 +49,6 @@ jobs:
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
 
-  deploy:
-    name: Build and Deploy
-    needs: [setup, create_neon_branch]
-    if: |
-      github.event.action == 'synchronize'
-      || github.event.action == 'opened'
-      || github.event.action == 'reopened'
-    runs-on: ubuntu-latest
-    steps:
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -87,7 +76,7 @@ jobs:
 
       - name: Update Koyeb service with DATABASE_URL
         run: |
-          koyeb service update unknown-damselfly/koko-pic-api --env "DATABASE_URL=${{ needs.create_neon_branch.outputs.db_url }}"
+          koyeb service update unknown-damselfly/koko-pic-api --env "DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }}"
 
       - name: Redeploy to Koyeb
         run: |
