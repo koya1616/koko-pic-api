@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: koko-pic-api-app:latest
+    platform: linux/amd64
     ports:
       - "8000:8000"
     environment:

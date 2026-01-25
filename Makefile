@@ -33,7 +33,7 @@ check:
 # ============================================
 
 build-prod:
-	docker compose -f docker-compose.prod.yml build
+	docker buildx build --platform linux/amd64 -t koko-pic-api-app:latest -f Dockerfile .
 
 up-prod:
 	docker compose -f docker-compose.prod.yml up -d
