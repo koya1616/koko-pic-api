@@ -41,4 +41,8 @@ jobs:
 
       - name: Redeploy to Koyeb
         run: |
-          koyeb service redeploy unknown-damselfly/koko-pic-api --env DATABASE_URL=bar
+          koyeb service update unknown-damselfly/koko-pic-api --env DATABASE_URL=bar
+
+      - name: Redeploy to Koyeb
+        run: |
+          koyeb service redeploy unknown-damselfly/koko-pic-api
