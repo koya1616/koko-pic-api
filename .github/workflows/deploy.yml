@@ -29,14 +29,10 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/koko-pic-api:latest
 
-      - name: Set up Koyeb CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
-          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
-
-      - name: Configure Koyeb CLI
-        run: |
-          koyeb auth login --token=${{ secrets.KOYEB_API_TOKEN }}
+      - name: Install and configure Koyeb CLI
+        uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: "${{ secrets.KOYEB_API_TOKEN }}"
 
       - name: Redeploy to Koyeb
         run: |
