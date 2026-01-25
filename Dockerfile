@@ -27,6 +27,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # ソースコードをコピーして本体をビルド
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
+COPY migrations ./migrations
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \

@@ -1,4 +1,4 @@
-.PHONY: build up down logs shell restart ps build-prod up-prod down-prod
+.PHONY: build up down logs shell restart ps build-prod up-prod down-prod push-prod
 
 # ============================================
 # 開発用
@@ -40,3 +40,7 @@ up-prod:
 
 down-prod:
 	docker compose -f docker-compose.prod.yml down
+
+push-prod: build-prod
+	docker tag koko-pic-api-app:latest kuuuuya/koko-pic-api:latest
+	docker push kuuuuya/koko-pic-api:latest
