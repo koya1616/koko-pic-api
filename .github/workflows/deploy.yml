@@ -1,0 +1,28 @@
+name: Deploy to Koyeb
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Koyeb CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
+          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
+
+      - name: Login to Koyeb
+        run: koyeb login --token "${{ secrets.KOYEB_API_TOKEN }}"
+
+      - name: Deploy to Koyeb
+        run: |
+          koyeb deploy . unknown-damselfly/koko-pic-api \
+            --git github.com/${{ github.repository }} \
+            --git-branch ${{ github.ref_name }} \
+            --wait
