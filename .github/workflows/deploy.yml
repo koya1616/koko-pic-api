@@ -36,8 +36,7 @@ jobs:
 
       - name: Configure Koyeb CLI
         run: |
-          mkdir -p $HOME/.koyeb
-          echo "api_token: ${{ secrets.KOYEB_API_TOKEN }}" > $HOME/.koyeb/config.yaml
+          koyeb auth login --token=${{ secrets.KOYEB_API_TOKEN }}
 
       - name: Redeploy to Koyeb
         run: |
