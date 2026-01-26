@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --force
+        run: cargo install sqlx-cli --no-default-features --features postgres,native-tls --force
 
       - name: Run migrations on Neon branch
         run: |
