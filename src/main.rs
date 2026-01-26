@@ -1,6 +1,7 @@
-use tokio::signal;
-
+use axum::http::Method;
 use dotenvy::dotenv;
+use tokio::signal;
+use tower_http::cors::{Any, CorsLayer};
 
 use koko_pic_api::app::create_app;
 use koko_pic_api::db::pool::create_pool;
@@ -21,7 +22,13 @@ async fn main() -> anyhow::Result<()> {
 
   let email_service = init_email_service().await?;
   let app_state = SharedAppState::new(pool, email_service).await;
-  let app = create_app(app_state);
+
+  let app = create_app(app_state).layer(
+    CorsLayer::new()
+      .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+      .allow_origin(Any)
+      .allow_headers(Any),
+  );
 
   let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
