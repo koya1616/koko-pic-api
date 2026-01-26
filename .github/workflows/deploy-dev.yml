@@ -59,7 +59,7 @@ jobs:
           key: cargo-bin-sqlx
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres
+        run: cargo install sqlx-cli
 
       - name: Run migrations on Neon branch
         run: |
