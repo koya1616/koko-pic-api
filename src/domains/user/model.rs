@@ -51,10 +51,10 @@ impl User {
     let user = sqlx::query_as!(
       User,
       r#"
-      INSERT INTO users (email, display_name, password)
-      VALUES ($1, $2, $3)
-      RETURNING id, email, display_name, password, created_at
-      "#,
+            INSERT INTO users (email, display_name, password)
+            VALUES ($1, $2, $3)
+            RETURNING id, email, display_name, password, created_at
+            "#,
       email,
       display_name,
       hashed_password

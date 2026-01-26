@@ -1,7 +1,16 @@
-use sqlx::PgPool;
 use tokio::signal;
 
 use dotenvy::dotenv;
+
+mod app;
+mod db;
+mod domains;
+mod state;
+mod utils;
+
+use app::create_app;
+use db::pool::create_pool;
+use state::SharedAppState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -9,15 +18,14 @@ async fn main() -> anyhow::Result<()> {
 
   tracing_subscriber::fmt::init();
 
-  let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-  let pool = PgPool::connect(&database_url).await?;
+  let pool = create_pool().await.expect("Failed to create database pool");
 
   sqlx::migrate!("./migrations").run(&pool).await?;
 
   println!("Database migrations applied successfully");
 
-  let app = koko_pic_api::app_with_state(pool);
+  let app_state = SharedAppState::new(pool).await;
+  let app = create_app(app_state);
 
   let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
