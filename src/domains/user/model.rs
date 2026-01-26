@@ -18,7 +18,7 @@ pub struct CreateUserRequest {
   pub email: String,
   #[validate(length(min = 1, message = "表示名が必要です"))]
   pub display_name: String,
-  #[validate(length(min = 8, message = "パスワードは8文字以上である必要があります"))]
+  #[validate(length(min = 8, message = "パスワードは8文字以上である必要があります"), custom(function = crate::utils::validate_password))]
   pub password: String,
 }
 

@@ -5,7 +5,7 @@
 # ============================================
 
 build:
-	docker compose build --no-cache
+	docker builder prune -a && docker compose build --no-cache
 
 up:
 	docker compose up
