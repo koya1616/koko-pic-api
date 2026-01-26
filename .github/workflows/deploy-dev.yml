@@ -68,6 +68,8 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/koko-pic-api:latest
+          build-args: |
+            DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }}
 
       - name: Install and configure Koyeb CLI
         uses: koyeb-community/koyeb-actions@v2
