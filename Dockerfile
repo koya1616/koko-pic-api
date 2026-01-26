@@ -15,10 +15,14 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 RUN cargo chef prepare --recipe-path recipe.json
 
-# Stage 3: 依存関係のビルド（キャッシュ効率化）
+# Stage 3: ビルド（sqlx compile-time check 用 DATABASE_URL）
 FROM chef AS builder
 
-# 必要な開発パッケージをインストール
+# 👉 sqlx::query! 用（compile time）
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
+# 必要な開発パッケージ
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
@@ -26,26 +30,26 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=planner /app/recipe.json recipe.json
 
-# 依存関係のみをビルド（ここがキャッシュされる）
+# 依存関係のみをビルド（キャッシュ）
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo chef cook --release --recipe-path recipe.json
 
-# ソースコードをコピーして本体をビルド
+# ソースコード
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY migrations ./migrations
 
+# 本体ビルド（ここで sqlx が DB に接続する）
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build --release && \
     cp /app/target/release/koko-pic-api /app/koko-pic-api
 
-# Stage 4: 最小ランタイム (distroless)
+# Stage 4: 実行専用（DB情報なし）
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 
 COPY --from=builder /app/koko-pic-api /usr/local/bin/app
 
 EXPOSE 8000
-
 ENTRYPOINT ["/usr/local/bin/app"]
