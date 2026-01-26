@@ -3,6 +3,7 @@ use sqlx::PgPool;
 
 pub mod handlers;
 pub mod models;
+pub mod utils;
 
 #[derive(Clone)]
 pub struct AppState {

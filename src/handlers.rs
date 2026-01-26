@@ -10,7 +10,7 @@ use sqlx::PgExecutor;
 
 use crate::{
   models::{CreateUserRequest, LoginRequest, LoginResponse, User},
-  AppState,
+  utils, AppState,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,7 +64,7 @@ where
     None => return Err(StatusCode::UNAUTHORIZED),
   };
 
-  let hashed_input_password = hash_password(&payload.password);
+  let hashed_input_password = utils::hash_password(&payload.password);
   if user.password != hashed_input_password {
     return Err(StatusCode::UNAUTHORIZED);
   }
@@ -91,13 +91,4 @@ where
     email: user.email,
     display_name: user.display_name,
   })
-}
-
-fn hash_password(password: &str) -> String {
-  use sha2::{Digest, Sha256};
-
-  let mut hasher = Sha256::new();
-  hasher.update(password.as_bytes());
-  let result = hasher.finalize();
-  format!("{:x}", result)
 }

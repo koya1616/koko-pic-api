@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use sqlx::{FromRow, PgExecutor, PgPool};
 
 #[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
@@ -47,7 +46,7 @@ impl User {
   where
     E: PgExecutor<'e>,
   {
-    let hashed_password = hash_password(password);
+    let hashed_password = crate::utils::hash_password(password);
 
     let user = sqlx::query_as!(
       User,
@@ -80,11 +79,4 @@ impl User {
 
     Ok(user)
   }
-}
-
-fn hash_password(password: &str) -> String {
-  let mut hasher = Sha256::new();
-  hasher.update(password.as_bytes());
-  let result = hasher.finalize();
-  format!("{:x}", result)
 }
