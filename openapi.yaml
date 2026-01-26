@@ -9,6 +9,10 @@ info:
 servers:
   - url: http://0.0.0.0:8000
     description: Local development server
+  - url: https://unknown-damselfly-koko-pic-99180237.koyeb.app
+    description: Dev server on Koyeb
+  - url: https://koko-pic-api.onrender.com
+    description: Production server on Render
 paths:
   /:
     get:
