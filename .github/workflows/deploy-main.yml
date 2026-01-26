@@ -21,9 +21,10 @@ jobs:
         run: cargo install sqlx-cli --force
 
       - name: Run migrations on Neon branch
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
         run: |
-          echo "${{ secrets.NEON_DATABASE_URL }}"
-          DATABASE_URL=${{ secrets.NEON_DATABASE_URL }} sqlx migrate run
+          sqlx migrate run
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
