@@ -15,12 +15,11 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 RUN cargo chef prepare --recipe-path recipe.json
 
-# Stage 3: ビルド（sqlx compile-time check 用 DATABASE_URL）
+# Stage 3: ビルド（sqlx offline mode）
 FROM chef AS builder
 
-# 👉 sqlx::query! 用（compile time）
-ARG DATABASE_URL
-ENV DATABASE_URL=${DATABASE_URL}
+# 👉 sqlx offline mode: DB接続不要
+ENV SQLX_OFFLINE=true
 
 # 必要な開発パッケージ
 RUN apt-get update && apt-get install -y \
@@ -39,8 +38,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY migrations ./migrations
+COPY .sqlx ./.sqlx
 
-# 本体ビルド（ここで sqlx が DB に接続する）
+# 本体ビルド（SQLX_OFFLINE=true により DB 接続不要）
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo build --release && \

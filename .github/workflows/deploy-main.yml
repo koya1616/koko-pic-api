@@ -17,15 +17,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres,native-tls --force
-
-      - name: Run migrations on Neon branch
-        env:
-          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
-        run: |
-          sqlx migrate run
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -43,8 +34,6 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/koko-pic-api:latest
-          build-args: |
-            DATABASE_URL=${{ secrets.NEON_DATABASE_URL }}
 
       - name: Trigger Render deploy hook
         run: |

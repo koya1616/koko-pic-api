@@ -52,13 +52,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres,native-tls --force
-
-      - name: Run migrations on Neon branch
-        run: |
-          DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }} sqlx migrate run
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -75,8 +68,6 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/koko-pic-api:latest
-          build-args: |
-            DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }}
 
       - name: Install and configure Koyeb CLI
         uses: koyeb-community/koyeb-actions@v2
