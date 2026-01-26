@@ -21,6 +21,10 @@ FROM chef AS builder
 # 👉 sqlx::query! 用（compile time）
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
+ENV SMTP_HOST=smtp.resend.com
+ENV SMTP_PORT=587
+ENV SMTP_USERNAME=resend
+ENV SMTP_FROM_EMAIL=onboarding@resend.dev
 
 # 必要な開発パッケージ
 RUN apt-get update && apt-get install -y \
