@@ -51,6 +51,7 @@ pub trait UserService: Send + Sync {
   async fn login(&self, req: LoginRequest) -> Result<LoginResponse, UserServiceError>;
   async fn send_verification_email(&self, user_id: i32) -> Result<(), UserServiceError>;
   async fn verify_email(&self, token: String) -> Result<User, UserServiceError>;
+  async fn get_user_by_id(&self, user_id: i32) -> Result<User, UserServiceError>;
 }
 
 pub struct UserServiceImpl<U, V> {
@@ -185,6 +186,16 @@ where
       .verification_token_repository
       .mark_token_as_used(verification_token.id)
       .await?;
+
+    Ok(user)
+  }
+
+  async fn get_user_by_id(&self, user_id: i32) -> Result<User, UserServiceError> {
+    let user = self
+      .user_repository
+      .find_by_id(user_id)
+      .await?
+      .ok_or(UserServiceError::UserNotFound)?;
 
     Ok(user)
   }
