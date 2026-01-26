@@ -5,7 +5,7 @@ use validator::Validate;
 
 use super::{
   model::{CreateUserRequest, LoginRequest, LoginResponse, User},
-  repository::{UserRepository, VerificationTokenRepository},
+  repository::{RepositoryError, UserRepository, VerificationTokenRepository},
 };
 use crate::{
   email::EmailService,
@@ -35,6 +35,16 @@ impl std::fmt::Display for UserServiceError {
       UserServiceError::TokenExpired(msg) => write!(f, "Token Expired: {}", msg),
       UserServiceError::TokenAlreadyUsed(msg) => write!(f, "Token Already Used: {}", msg),
       UserServiceError::UserNotFound(msg) => write!(f, "User Not Found: {}", msg),
+    }
+  }
+}
+
+impl From<RepositoryError> for UserServiceError {
+  fn from(err: RepositoryError) -> Self {
+    match err {
+      RepositoryError::DatabaseError(e) => UserServiceError::InternalServerError(format!("Database error: {}", e)),
+      RepositoryError::NotFound(msg) => UserServiceError::UserNotFound(msg),
+      RepositoryError::Conflict(msg) => UserServiceError::InternalServerError(msg),
     }
   }
 }
@@ -88,13 +98,9 @@ where
     let user = self
       .user_repository
       .create(&req.email, &req.display_name, &req.password)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Failed to create user: {}", e)))?;
+      .await?;
 
-    self
-      .send_verification_email(user.id)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Failed to send verification email: {}", e)))?;
+    self.send_verification_email(user.id).await?;
 
     Ok(user)
   }
@@ -103,13 +109,8 @@ where
     let user = self
       .user_repository
       .find_by_email(&req.email)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Database error: {}", e)))?;
-
-    let user = match user {
-      Some(user) => user,
-      None => return Err(UserServiceError::Unauthorized("Invalid credentials".to_string())),
-    };
+      .await?
+      .ok_or_else(|| UserServiceError::Unauthorized("Invalid credentials".to_string()))?;
 
     if !user.email_verified {
       return Err(UserServiceError::Unauthorized("Email not verified".to_string()));
@@ -150,14 +151,12 @@ where
     let verification_token = self
       .verification_token_repository
       .create_verification_token(user_id, "email_verification", expires_at)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Failed to create verification token: {}", e)))?;
+      .await?;
 
     let user = self
       .user_repository
       .find_by_id(user_id)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Database error: {}", e)))?
+      .await?
       .ok_or_else(|| UserServiceError::UserNotFound("User not found".to_string()))?;
 
     let subject = "メールアドレスを確認してください";
@@ -166,13 +165,14 @@ where
       verification_token.token
     );
 
-    match self
+    if let Err(e) = self
       .email_service
       .send_simple_text_email(&user.email, subject, &body)
       .await
     {
-      Ok(_) => tracing::info!("Verification email sent to user {}", user_id),
-      Err(e) => tracing::error!("Failed to send verification email to user {}: {:?}", user_id, e),
+      tracing::error!("Failed to send verification email to user {}: {:?}", user_id, e);
+    } else {
+      tracing::info!("Verification email sent to user {}", user_id);
     }
 
     Ok(())
@@ -182,8 +182,7 @@ where
     let verification_token = self
       .verification_token_repository
       .find_token_by_value(&token)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Database error: {}", e)))?
+      .await?
       .ok_or_else(|| UserServiceError::InvalidToken("Invalid verification token".to_string()))?;
 
     if verification_token.expires_at < Utc::now() {
@@ -198,15 +197,12 @@ where
       ));
     }
 
-    let user = User::verify_email(self.user_repository.get_pool(), verification_token.user_id)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Failed to verify email: {}", e)))?;
+    let user = User::verify_email(self.user_repository.get_pool(), verification_token.user_id).await?;
 
     self
       .verification_token_repository
       .mark_token_as_used(verification_token.id)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Failed to mark token as used: {}", e)))?;
+      .await?;
 
     Ok(user)
   }
@@ -215,8 +211,7 @@ where
     let user = self
       .user_repository
       .find_by_id(user_id)
-      .await
-      .map_err(|e| UserServiceError::InternalServerError(format!("Database error: {}", e)))?
+      .await?
       .ok_or_else(|| UserServiceError::UserNotFound("User not found".to_string()))?;
 
     Ok(user)
