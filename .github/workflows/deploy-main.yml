@@ -17,6 +17,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache cargo binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: cargo-bin-sqlx
+
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli
+
+      - name: Run migrations on Neon branch
+        run: |
+          DATABASE_URL=${{ secrets.NEON_DATABASE_URL }} sqlx migrate run
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
