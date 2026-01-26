@@ -21,10 +21,6 @@ FROM chef AS builder
 # 👉 sqlx::query! 用（compile time）
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
-ENV SMTP_HOST=smtp.resend.com
-ENV SMTP_PORT=587
-ENV SMTP_USERNAME=resend
-ENV SMTP_FROM_EMAIL=onboarding@resend.dev
 
 # 必要な開発パッケージ
 RUN apt-get update && apt-get install -y \
@@ -54,6 +50,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 
 COPY --from=builder /app/koko-pic-api /usr/local/bin/app
+
+ENV SMTP_HOST=smtp.resend.com
+ENV SMTP_PORT=587
+ENV SMTP_USERNAME=resend
+ENV SMTP_FROM_EMAIL=onboarding@resend.dev
 
 EXPOSE 8000
 ENTRYPOINT ["/usr/local/bin/app"]
