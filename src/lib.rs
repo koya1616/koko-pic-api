@@ -17,16 +17,8 @@ pub fn router() -> Router<()> {
 pub fn app_with_state(pool: PgPool) -> Router {
   Router::new()
     .route("/", get(hello_world_handler))
-    .nest("/api", api_routes())
+    .nest("/api/v1", handlers::user_routes())
     .with_state(AppState { db: pool })
-}
-
-fn api_routes() -> Router<AppState> {
-  Router::new().nest("/v1", v1_routes())
-}
-
-fn v1_routes() -> Router<AppState> {
-  Router::new().merge(handlers::user_routes())
 }
 
 pub async fn hello_world_handler() -> Html<String> {
