@@ -31,14 +31,12 @@ ps:
 check:
 	docker exec koko-pic-api-app-1 sh -c "cargo fmt && cargo clippy && cargo test"
 
-sqlx-i:
+sqlx:
 	docker compose exec app cargo install sqlx-cli \
 		--no-default-features \
 		--features postgres \
-		--locked
-
-sqlx-m:
-	docker compose exec app sqlx migrate run
+		--locked && \
+		docker compose exec app sqlx migrate run
 
 # ============================================
 # 本番用
