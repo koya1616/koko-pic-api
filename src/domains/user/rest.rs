@@ -1,8 +1,8 @@
 use axum::{
   extract::{Json, State},
-  http::StatusCode,
+  http::{HeaderMap, StatusCode},
   response::Json as JsonResponse,
-  routing::{post, Router},
+  routing::{get, post, Router},
 };
 
 use super::model::{CreateUserRequest, LoginRequest};
@@ -12,6 +12,8 @@ pub fn user_routes() -> Router<SharedAppState> {
   Router::new()
     .route("/users", post(create_user_handler))
     .route("/login", post(login_handler))
+    .route("/verify-email/{token}", get(verify_email_handler))
+    .route("/resend-verification", post(resend_verification_handler))
 }
 
 pub async fn create_user_handler(
@@ -24,6 +26,10 @@ pub async fn create_user_handler(
       crate::domains::user::service::UserServiceError::ValidationError => Err(StatusCode::BAD_REQUEST),
       crate::domains::user::service::UserServiceError::InternalServerError => Err(StatusCode::INTERNAL_SERVER_ERROR),
       crate::domains::user::service::UserServiceError::Unauthorized => Err(StatusCode::UNAUTHORIZED),
+      crate::domains::user::service::UserServiceError::InvalidToken => Err(StatusCode::BAD_REQUEST),
+      crate::domains::user::service::UserServiceError::TokenExpired => Err(StatusCode::GONE),
+      crate::domains::user::service::UserServiceError::TokenAlreadyUsed => Err(StatusCode::CONFLICT),
+      crate::domains::user::service::UserServiceError::UserNotFound => Err(StatusCode::NOT_FOUND),
     },
   }
 }
@@ -38,7 +44,50 @@ pub async fn login_handler(
       crate::domains::user::service::UserServiceError::Unauthorized => Err(StatusCode::UNAUTHORIZED),
       crate::domains::user::service::UserServiceError::ValidationError => Err(StatusCode::BAD_REQUEST),
       crate::domains::user::service::UserServiceError::InternalServerError => Err(StatusCode::INTERNAL_SERVER_ERROR),
+      crate::domains::user::service::UserServiceError::InvalidToken => Err(StatusCode::BAD_REQUEST),
+      crate::domains::user::service::UserServiceError::TokenExpired => Err(StatusCode::GONE),
+      crate::domains::user::service::UserServiceError::TokenAlreadyUsed => Err(StatusCode::CONFLICT),
+      crate::domains::user::service::UserServiceError::UserNotFound => Err(StatusCode::NOT_FOUND),
     },
+  }
+}
+
+pub async fn verify_email_handler(
+  State(state): State<SharedAppState>,
+  axum::extract::Path(token): axum::extract::Path<String>,
+) -> Result<JsonResponse<super::model::User>, StatusCode> {
+  match state.verify_email(token).await {
+    Ok(user) => Ok(JsonResponse(user)),
+    Err(e) => match e {
+      crate::domains::user::service::UserServiceError::InvalidToken => Err(StatusCode::BAD_REQUEST),
+      crate::domains::user::service::UserServiceError::TokenExpired => Err(StatusCode::GONE),
+      crate::domains::user::service::UserServiceError::TokenAlreadyUsed => Err(StatusCode::CONFLICT),
+      crate::domains::user::service::UserServiceError::InternalServerError => Err(StatusCode::INTERNAL_SERVER_ERROR),
+      crate::domains::user::service::UserServiceError::ValidationError => Err(StatusCode::BAD_REQUEST),
+      crate::domains::user::service::UserServiceError::Unauthorized => Err(StatusCode::UNAUTHORIZED),
+      crate::domains::user::service::UserServiceError::UserNotFound => Err(StatusCode::NOT_FOUND),
+    },
+  }
+}
+
+pub async fn resend_verification_handler(
+  State(state): State<SharedAppState>,
+  headers: HeaderMap,
+) -> Result<(), StatusCode> {
+  let auth_header = headers
+    .get(axum::http::header::AUTHORIZATION)
+    .ok_or(StatusCode::UNAUTHORIZED)?
+    .to_str()
+    .map_err(|_| StatusCode::UNAUTHORIZED)?;
+
+  let token = auth_header.strip_prefix("Bearer ").ok_or(StatusCode::UNAUTHORIZED)?;
+  let claims = crate::utils::jwt::decode_jwt(token).map_err(|_| StatusCode::UNAUTHORIZED)?;
+
+  let user_id = claims.user_id;
+
+  match state.send_verification_email(user_id).await {
+    Ok(_) => Ok(()),
+    Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
   }
 }
 
@@ -81,7 +130,14 @@ mod tests {
   #[sqlx::test(migrations = "./migrations")]
   async fn login_success(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
     let app = app_with_pool(pool.clone()).await;
+
     super::super::model::User::create(&pool, "api-login@example.com", "API Login", "password123").await?;
+    sqlx::query!(
+      "UPDATE users SET email_verified = true WHERE email = $1",
+      "api-login@example.com"
+    )
+    .execute(&pool)
+    .await?;
 
     let login_payload = super::super::model::LoginRequest {
       email: "api-login@example.com".to_string(),

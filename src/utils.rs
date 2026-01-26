@@ -2,6 +2,8 @@ use regex::Regex;
 use sha2::{Digest, Sha256};
 use validator::ValidationError;
 
+pub mod jwt;
+
 pub fn hash_password(password: &str) -> String {
   let mut hasher = Sha256::new();
   hasher.update(password.as_bytes());
@@ -22,6 +24,25 @@ pub fn validate_password(password: &str) -> Result<(), ValidationError> {
   }
 
   Ok(())
+}
+
+pub async fn init_email_service() -> anyhow::Result<crate::email::EmailService> {
+  use crate::email::{EmailService, SmtpConfig};
+  use std::env;
+
+  let smtp_config = SmtpConfig {
+    host: env::var("SMTP_HOST").unwrap_or_else(|_| "smtp.gmail.com".to_string()),
+    port: env::var("SMTP_PORT")
+      .unwrap_or_else(|_| "587".to_string())
+      .parse()
+      .unwrap_or(587),
+    username: env::var("SMTP_USERNAME")?,
+    password: env::var("SMTP_PASSWORD")?,
+    from_email: env::var("SMTP_FROM_EMAIL")?,
+  };
+
+  let email_service = EmailService::new(smtp_config)?;
+  Ok(email_service)
 }
 
 #[cfg(test)]

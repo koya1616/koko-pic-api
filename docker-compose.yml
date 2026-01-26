@@ -9,8 +9,15 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
       - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
       - PORT=8000
+      # 開発環境用メール設定
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - SMTP_USERNAME=test
+      - SMTP_PASSWORD=test
+      - SMTP_FROM_EMAIL=koko-pic@example.com
     depends_on:
       - postgres
+      - mailhog
     volumes:
       - .:/app
       - cargo-cache:/usr/local/cargo/registry
@@ -28,6 +35,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    restart: unless-stopped
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      - MH_STORAGE=maildir
     restart: unless-stopped
 
 volumes:

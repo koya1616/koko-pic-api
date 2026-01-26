@@ -5,6 +5,7 @@ use dotenvy::dotenv;
 use koko_pic_api::app::create_app;
 use koko_pic_api::db::pool::create_pool;
 use koko_pic_api::state::SharedAppState;
+use koko_pic_api::utils::init_email_service;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -18,7 +19,8 @@ async fn main() -> anyhow::Result<()> {
 
   println!("Database migrations applied successfully");
 
-  let app_state = SharedAppState::new(pool).await;
+  let email_service = init_email_service().await?;
+  let app_state = SharedAppState::new(pool, email_service).await;
   let app = create_app(app_state);
 
   let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();

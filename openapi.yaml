@@ -78,6 +78,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/verify-email/{token}:
+    get:
+      summary: Verify user email
+      description: Verify user's email address using the token sent to their email
+      tags:
+        - Verification
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Verification token sent to user's email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Token already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: Token expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/resend-verification:
+    post:
+      summary: Resend verification email
+      description: Resend the verification email to the user
+      tags:
+        - Verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                  format: int32
+                  description: User's unique identifier
+              required:
+                - user_id
+      responses:
+        '200':
+          description: Verification email resent successfully
+        '400':
+          description: Bad request - invalid user ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     User:
@@ -94,6 +172,10 @@ components:
         display_name:
           type: string
           description: User's display name
+        email_verified:
+          type: boolean
+          description: Whether the user's email has been verified
+          default: false
         password:
           type: string
           format: password
@@ -107,6 +189,7 @@ components:
         - id
         - email
         - display_name
+        - email_verified
         - password
         - created_at
     CreateUserRequest:
@@ -183,3 +266,5 @@ tags:
     description: User authentication endpoints
   - name: Users
     description: User management endpoints
+  - name: Verification
+    description: Email verification endpoints

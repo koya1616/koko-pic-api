@@ -15,6 +15,7 @@ Koko Pic APIは、画像共有アプリケーションのためのモダンで�
 - 自動データベースマイグレーション
 - tracingによる構造化ロギング
 - 包括的なエラーハンドリング
+- メール送信機能（SMTP対応）
 
 ## 前提条件
 
@@ -120,8 +121,42 @@ make check
 - `DATABASE_URL` - PostgreSQLデータベース接続文字列
 - `JWT_SECRET` - JWTトークン署名のシークレットキー
 - `PORT` - APIサーバーのポート番号
+- `SMTP_HOST` - SMTPサーバーホスト（例：smtp.gmail.com）
+- `SMTP_PORT` - SMTPサーバーポート（例：587）
+- `SMTP_USERNAME` - SMTP認証ユーザー名
+- `SMTP_PASSWORD` - SMTP認証パスワード
+- `SMTP_FROM_EMAIL` - 送信元メールアドレス
 
 これらは `docker-compose.yml` ファイルで設定されています。
+
+## メール送信機能
+
+このAPIは、`lettre`ライブラリを使用したメール送信機能をサポートしています。以下のように使用できます：
+
+```rust
+use koko_pic_api::email::{EmailService, EmailMessage, SmtpConfig};
+use koko_pic_api::utils::init_email_service;
+
+// 環境変数から初期化
+let email_service = init_email_service().await?;
+
+// 単純なメールを送信
+email_service
+    .send_simple_text_email(
+        "recipient@example.com",
+        "件名",
+        "本文"
+    )
+    .await?;
+
+// 複数の受信者にメールを送信
+let message = EmailMessage::new(
+    vec!["recipient1@example.com".to_string(), "recipient2@example.com".to_string()],
+    "件名".to_string(),
+    "本文".to_string()
+);
+email_service.send_email(&message).await?;
+```
 
 ## 貢献
 

@@ -2,10 +2,13 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::domains::user::{
-  model::{CreateUserRequest, LoginRequest, LoginResponse, User},
-  repository::SqlxUserRepository,
-  service::{UserService, UserServiceError, UserServiceImpl},
+use crate::{
+  domains::user::{
+    model::{CreateUserRequest, LoginRequest, LoginResponse, User},
+    repository::{SqlxUserRepository, SqlxVerificationTokenRepository},
+    service::{UserService, UserServiceError, UserServiceImpl},
+  },
+  email::EmailService,
 };
 
 pub trait AppState: Clone + Send + Sync + 'static {
@@ -17,17 +20,27 @@ pub trait AppState: Clone + Send + Sync + 'static {
     &self,
     req: LoginRequest,
   ) -> impl std::future::Future<Output = Result<LoginResponse, UserServiceError>> + Send;
+  fn verify_email(&self, token: String) -> impl std::future::Future<Output = Result<User, UserServiceError>> + Send;
+  fn send_verification_email(
+    &self,
+    user_id: i32,
+  ) -> impl std::future::Future<Output = Result<(), UserServiceError>> + Send;
 }
 
 #[derive(Clone)]
 pub struct SharedAppState {
-  pub user_service: Arc<UserServiceImpl<SqlxUserRepository>>,
+  pub user_service: Arc<UserServiceImpl<SqlxUserRepository, SqlxVerificationTokenRepository>>,
 }
 
 impl SharedAppState {
-  pub async fn new(pool: PgPool) -> Self {
-    let user_repository = SqlxUserRepository::new(pool);
-    let user_service = Arc::new(UserServiceImpl::new(user_repository));
+  pub async fn new(pool: PgPool, email_service: EmailService) -> Self {
+    let user_repository = SqlxUserRepository::new(pool.clone());
+    let verification_token_repository = SqlxVerificationTokenRepository::new(pool);
+    let user_service = Arc::new(UserServiceImpl::new(
+      user_repository,
+      verification_token_repository,
+      email_service,
+    ));
 
     Self { user_service }
   }
@@ -40,5 +53,13 @@ impl AppState for SharedAppState {
 
   async fn login(&self, req: LoginRequest) -> Result<LoginResponse, UserServiceError> {
     self.user_service.login(req).await
+  }
+
+  async fn verify_email(&self, token: String) -> Result<User, UserServiceError> {
+    self.user_service.verify_email(token).await
+  }
+
+  async fn send_verification_email(&self, user_id: i32) -> Result<(), UserServiceError> {
+    self.user_service.send_verification_email(user_id).await
   }
 }
