@@ -1,0 +1,270 @@
+openapi: 3.0.3
+info:
+  title: Koko Pic API
+  description: API for the Koko Pic application - a picture sharing platform
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@kokopic.com
+servers:
+  - url: http://0.0.0.0:8000
+    description: Local development server
+  - url: https://unknown-damselfly-koko-pic-99180237.koyeb.app
+    description: Dev server on Koyeb
+  - url: https://koko-pic-api.onrender.com
+    description: Production server on Render
+paths:
+  /:
+    get:
+      summary: Health check endpoint
+      description: Simple endpoint to check if the server is running
+      responses:
+        '200':
+          description: Server is running
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<h1>Hello, World!</h1>"
+  /api/v1/users:
+    post:
+      summary: Create a new user
+      description: Register a new user account with email, display name, and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/login:
+    post:
+      summary: User login
+      description: Authenticate user with email and password to receive JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Unauthorized - Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/verify-email/{token}:
+    get:
+      summary: Verify user email
+      description: Verify user's email address using the token sent to their email
+      tags:
+        - Verification
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Verification token sent to user's email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Token already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: Token expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/resend-verification:
+    post:
+      summary: Resend verification email
+      description: Resend the verification email to the user
+      tags:
+        - Verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                  format: int32
+                  description: User's unique identifier
+              required:
+                - user_id
+      responses:
+        '200':
+          description: Verification email resent successfully
+        '400':
+          description: Bad request - invalid user ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Unique identifier for the user
+        email:
+          type: string
+          format: email
+          description: User's email address
+        display_name:
+          type: string
+          description: User's display name
+        email_verified:
+          type: boolean
+          description: Whether the user's email has been verified
+          default: false
+        password:
+          type: string
+          format: password
+          description: Hashed password (never exposed in responses)
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the user was created
+          nullable: true
+      required:
+        - id
+        - email
+        - display_name
+        - email_verified
+        - password
+        - created_at
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+        display_name:
+          type: string
+          description: User's display name
+        password:
+          type: string
+          format: password
+          description: User's password (will be hashed on the server)
+      required:
+        - email
+        - display_name
+        - password
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+        password:
+          type: string
+          format: password
+          description: User's password
+      required:
+        - email
+        - password
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token for authentication
+        user_id:
+          type: integer
+          format: int32
+          description: User's unique identifier
+        email:
+          type: string
+          format: email
+          description: User's email address
+        display_name:
+          type: string
+          description: User's display name
+      required:
+        - token
+        - user_id
+        - email
+        - display_name
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+      required:
+        - error
+security:
+  - bearerAuth: []
+securityDefinitions:
+  bearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Users
+    description: User management endpoints
+  - name: Verification
+    description: Email verification endpoints

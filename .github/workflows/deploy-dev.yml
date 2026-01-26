@@ -52,6 +52,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --force
+
+      - name: Run migrations on Neon branch
+        run: |
+          DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }} sqlx migrate run
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -68,6 +75,8 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/koko-pic-api:latest
+          build-args: |
+            DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }}
 
       - name: Install and configure Koyeb CLI
         uses: koyeb-community/koyeb-actions@v2
@@ -77,10 +86,6 @@ jobs:
       - name: Update Koyeb service with DATABASE_URL
         run: |
           koyeb service update unknown-damselfly/koko-pic-api --env "DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }}"
-
-      - name: Redeploy to Koyeb
-        run: |
-          koyeb service redeploy unknown-damselfly/koko-pic-api
 
   delete_neon_branch:
     name: Delete Neon Branch
