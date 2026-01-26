@@ -14,7 +14,6 @@ services:
       - SMTP_HOST=smtp.resend.com
       - SMTP_PORT=587
       - SMTP_USERNAME=resend
-      - SMTP_PASSWORD=${RESEND_API_KEY}
       - SMTP_FROM_EMAIL=onboarding@resend.dev
     extra_hosts:
       - "host.docker.internal:host-gateway"
