@@ -6,7 +6,10 @@ use axum::{
 };
 
 use super::model::{CreateUserRequest, LoginRequest};
-use crate::state::{AppState, SharedAppState};
+use crate::{
+  state::{AppState, SharedAppState},
+  AppError,
+};
 
 pub fn user_routes() -> Router<SharedAppState> {
   Router::new()
@@ -20,17 +23,21 @@ pub fn user_routes() -> Router<SharedAppState> {
 pub async fn create_user_handler(
   State(state): State<SharedAppState>,
   Json(payload): Json<CreateUserRequest>,
-) -> Result<JsonResponse<super::model::User>, StatusCode> {
+) -> Result<JsonResponse<super::model::User>, AppError> {
   match state.create_user(payload).await {
     Ok(user) => Ok(JsonResponse(user)),
     Err(e) => match e {
-      crate::domains::user::service::UserServiceError::ValidationError => Err(StatusCode::BAD_REQUEST),
-      crate::domains::user::service::UserServiceError::InternalServerError => Err(StatusCode::INTERNAL_SERVER_ERROR),
-      crate::domains::user::service::UserServiceError::Unauthorized => Err(StatusCode::UNAUTHORIZED),
-      crate::domains::user::service::UserServiceError::InvalidToken => Err(StatusCode::BAD_REQUEST),
-      crate::domains::user::service::UserServiceError::TokenExpired => Err(StatusCode::GONE),
-      crate::domains::user::service::UserServiceError::TokenAlreadyUsed => Err(StatusCode::CONFLICT),
-      crate::domains::user::service::UserServiceError::UserNotFound => Err(StatusCode::NOT_FOUND),
+      crate::domains::user::service::UserServiceError::ValidationError(msg) => Err(AppError::bad_request(msg)),
+      crate::domains::user::service::UserServiceError::InternalServerError(msg) => {
+        Err(AppError::internal_server_error(msg))
+      }
+      crate::domains::user::service::UserServiceError::Unauthorized(msg) => Err(AppError::unauthorized(msg)),
+      crate::domains::user::service::UserServiceError::InvalidToken(msg) => Err(AppError::bad_request(msg)),
+      crate::domains::user::service::UserServiceError::TokenExpired(msg) => Err(AppError::new(StatusCode::GONE, msg)),
+      crate::domains::user::service::UserServiceError::TokenAlreadyUsed(msg) => {
+        Err(AppError::new(StatusCode::CONFLICT, msg))
+      }
+      crate::domains::user::service::UserServiceError::UserNotFound(msg) => Err(AppError::not_found(msg)),
     },
   }
 }
@@ -38,17 +45,21 @@ pub async fn create_user_handler(
 pub async fn login_handler(
   State(state): State<SharedAppState>,
   Json(payload): Json<LoginRequest>,
-) -> Result<JsonResponse<super::model::LoginResponse>, StatusCode> {
+) -> Result<JsonResponse<super::model::LoginResponse>, AppError> {
   match state.login(payload).await {
     Ok(response) => Ok(JsonResponse(response)),
     Err(e) => match e {
-      crate::domains::user::service::UserServiceError::Unauthorized => Err(StatusCode::UNAUTHORIZED),
-      crate::domains::user::service::UserServiceError::ValidationError => Err(StatusCode::BAD_REQUEST),
-      crate::domains::user::service::UserServiceError::InternalServerError => Err(StatusCode::INTERNAL_SERVER_ERROR),
-      crate::domains::user::service::UserServiceError::InvalidToken => Err(StatusCode::BAD_REQUEST),
-      crate::domains::user::service::UserServiceError::TokenExpired => Err(StatusCode::GONE),
-      crate::domains::user::service::UserServiceError::TokenAlreadyUsed => Err(StatusCode::CONFLICT),
-      crate::domains::user::service::UserServiceError::UserNotFound => Err(StatusCode::NOT_FOUND),
+      crate::domains::user::service::UserServiceError::Unauthorized(msg) => Err(AppError::unauthorized(msg)),
+      crate::domains::user::service::UserServiceError::ValidationError(msg) => Err(AppError::bad_request(msg)),
+      crate::domains::user::service::UserServiceError::InternalServerError(msg) => {
+        Err(AppError::internal_server_error(msg))
+      }
+      crate::domains::user::service::UserServiceError::InvalidToken(msg) => Err(AppError::bad_request(msg)),
+      crate::domains::user::service::UserServiceError::TokenExpired(msg) => Err(AppError::new(StatusCode::GONE, msg)),
+      crate::domains::user::service::UserServiceError::TokenAlreadyUsed(msg) => {
+        Err(AppError::new(StatusCode::CONFLICT, msg))
+      }
+      crate::domains::user::service::UserServiceError::UserNotFound(msg) => Err(AppError::not_found(msg)),
     },
   }
 }
@@ -56,17 +67,21 @@ pub async fn login_handler(
 pub async fn verify_email_handler(
   State(state): State<SharedAppState>,
   axum::extract::Path(token): axum::extract::Path<String>,
-) -> Result<JsonResponse<super::model::User>, StatusCode> {
+) -> Result<JsonResponse<super::model::User>, AppError> {
   match state.verify_email(token).await {
     Ok(user) => Ok(JsonResponse(user)),
     Err(e) => match e {
-      crate::domains::user::service::UserServiceError::InvalidToken => Err(StatusCode::BAD_REQUEST),
-      crate::domains::user::service::UserServiceError::TokenExpired => Err(StatusCode::GONE),
-      crate::domains::user::service::UserServiceError::TokenAlreadyUsed => Err(StatusCode::CONFLICT),
-      crate::domains::user::service::UserServiceError::InternalServerError => Err(StatusCode::INTERNAL_SERVER_ERROR),
-      crate::domains::user::service::UserServiceError::ValidationError => Err(StatusCode::BAD_REQUEST),
-      crate::domains::user::service::UserServiceError::Unauthorized => Err(StatusCode::UNAUTHORIZED),
-      crate::domains::user::service::UserServiceError::UserNotFound => Err(StatusCode::NOT_FOUND),
+      crate::domains::user::service::UserServiceError::InvalidToken(msg) => Err(AppError::bad_request(msg)),
+      crate::domains::user::service::UserServiceError::TokenExpired(msg) => Err(AppError::new(StatusCode::GONE, msg)),
+      crate::domains::user::service::UserServiceError::TokenAlreadyUsed(msg) => {
+        Err(AppError::new(StatusCode::CONFLICT, msg))
+      }
+      crate::domains::user::service::UserServiceError::InternalServerError(msg) => {
+        Err(AppError::internal_server_error(msg))
+      }
+      crate::domains::user::service::UserServiceError::ValidationError(msg) => Err(AppError::bad_request(msg)),
+      crate::domains::user::service::UserServiceError::Unauthorized(msg) => Err(AppError::unauthorized(msg)),
+      crate::domains::user::service::UserServiceError::UserNotFound(msg) => Err(AppError::not_found(msg)),
     },
   }
 }
@@ -74,45 +89,60 @@ pub async fn verify_email_handler(
 pub async fn get_current_user_handler(
   State(state): State<SharedAppState>,
   headers: HeaderMap,
-) -> Result<JsonResponse<super::model::User>, StatusCode> {
+) -> Result<JsonResponse<super::model::User>, AppError> {
   let auth_header = headers
     .get(axum::http::header::AUTHORIZATION)
-    .ok_or(StatusCode::UNAUTHORIZED)?
+    .ok_or_else(|| AppError::unauthorized("Authorization header missing"))?
     .to_str()
-    .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    .map_err(|_| AppError::unauthorized("Invalid authorization header"))?;
 
-  let token = auth_header.strip_prefix("Bearer ").ok_or(StatusCode::UNAUTHORIZED)?;
-  let claims = crate::utils::jwt::decode_jwt(token).map_err(|_| StatusCode::UNAUTHORIZED)?;
+  let token = auth_header
+    .strip_prefix("Bearer ")
+    .ok_or_else(|| AppError::unauthorized("Invalid authorization format"))?;
+  let claims = crate::utils::jwt::decode_jwt(token).map_err(|_| AppError::unauthorized("Invalid token"))?;
 
   let user_id = claims.user_id;
 
   match state.get_user_by_id(user_id).await {
     Ok(user) => Ok(JsonResponse(user)),
-    Err(e) => match e {
-      crate::domains::user::service::UserServiceError::UserNotFound => Err(StatusCode::NOT_FOUND),
-      _ => Err(StatusCode::INTERNAL_SERVER_ERROR),
-    },
+    Err(e) => {
+      let (status_code, message) = match e {
+        crate::domains::user::service::UserServiceError::UserNotFound(msg) => (StatusCode::NOT_FOUND, msg),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
+      };
+
+      Err(AppError::new(status_code, message))
+    }
   }
 }
 
 pub async fn resend_verification_handler(
   State(state): State<SharedAppState>,
   headers: HeaderMap,
-) -> Result<(), StatusCode> {
+) -> Result<(), AppError> {
   let auth_header = headers
     .get(axum::http::header::AUTHORIZATION)
-    .ok_or(StatusCode::UNAUTHORIZED)?
+    .ok_or_else(|| AppError::unauthorized("Authorization header missing"))?
     .to_str()
-    .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    .map_err(|_| AppError::unauthorized("Invalid authorization header"))?;
 
-  let token = auth_header.strip_prefix("Bearer ").ok_or(StatusCode::UNAUTHORIZED)?;
-  let claims = crate::utils::jwt::decode_jwt(token).map_err(|_| StatusCode::UNAUTHORIZED)?;
+  let token = auth_header
+    .strip_prefix("Bearer ")
+    .ok_or_else(|| AppError::unauthorized("Invalid authorization format"))?;
+  let claims = crate::utils::jwt::decode_jwt(token).map_err(|_| AppError::unauthorized("Invalid token"))?;
 
   let user_id = claims.user_id;
 
   match state.send_verification_email(user_id).await {
     Ok(_) => Ok(()),
-    Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    Err(e) => {
+      let (status_code, message) = match e {
+        crate::domains::user::service::UserServiceError::UserNotFound(msg) => (StatusCode::NOT_FOUND, msg),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
+      };
+
+      Err(AppError::new(status_code, message))
+    }
   }
 }
 
