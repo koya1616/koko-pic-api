@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
+use validator::Validate;
 
 use super::{
   model::{CreateUserRequest, LoginRequest, LoginResponse, User},
@@ -10,6 +11,7 @@ use super::{
 #[derive(Debug)]
 pub enum UserServiceError {
   Unauthorized,
+  ValidationError,
   InternalServerError,
 }
 
@@ -44,6 +46,8 @@ where
   R: UserRepository,
 {
   async fn create_user(&self, req: CreateUserRequest) -> Result<User, UserServiceError> {
+    req.validate().map_err(|_| UserServiceError::ValidationError)?;
+
     let user = self
       .repository
       .create(&req.email, &req.display_name, &req.password)

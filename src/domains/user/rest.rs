@@ -20,7 +20,11 @@ pub async fn create_user_handler(
 ) -> Result<JsonResponse<super::model::User>, StatusCode> {
   match state.create_user(payload).await {
     Ok(user) => Ok(JsonResponse(user)),
-    Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    Err(e) => match e {
+      crate::domains::user::service::UserServiceError::ValidationError => Err(StatusCode::BAD_REQUEST),
+      crate::domains::user::service::UserServiceError::InternalServerError => Err(StatusCode::INTERNAL_SERVER_ERROR),
+      crate::domains::user::service::UserServiceError::Unauthorized => Err(StatusCode::UNAUTHORIZED),
+    },
   }
 }
 
@@ -32,6 +36,7 @@ pub async fn login_handler(
     Ok(response) => Ok(JsonResponse(response)),
     Err(e) => match e {
       crate::domains::user::service::UserServiceError::Unauthorized => Err(StatusCode::UNAUTHORIZED),
+      crate::domains::user::service::UserServiceError::ValidationError => Err(StatusCode::BAD_REQUEST),
       crate::domains::user::service::UserServiceError::InternalServerError => Err(StatusCode::INTERNAL_SERVER_ERROR),
     },
   }
@@ -57,6 +62,19 @@ mod tests {
     let user: super::super::model::User = serde_json::from_slice(&body).expect("deserialize response");
     assert_eq!(user.email, payload.email);
     assert_eq!(user.display_name, payload.display_name);
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn create_user_endpoint_invalid_email(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool).await;
+    let payload = CreateUserRequest {
+      email: "invalid-email".to_string(),
+      display_name: "Test User".to_string(),
+      password: "password123".to_string(),
+    };
+    let (status, _) = post_json(app, "/api/v1/users", &payload).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
     Ok(())
   }
 

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgExecutor, PgPool};
+use validator::Validate;
 
 #[derive(Debug, Clone, FromRow, Deserialize, Serialize)]
 pub struct User {
@@ -11,10 +12,13 @@ pub struct User {
   pub created_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct CreateUserRequest {
+  #[validate(email(message = "メールアドレスが無効です"))]
   pub email: String,
+  #[validate(length(min = 1, message = "表示名が必要です"))]
   pub display_name: String,
+  #[validate(length(min = 8, message = "パスワードは8文字以上である必要があります"))]
   pub password: String,
 }
 
