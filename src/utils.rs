@@ -36,9 +36,9 @@ pub async fn init_email_service() -> anyhow::Result<crate::email::EmailService> 
       .unwrap_or_else(|_| "587".to_string())
       .parse()
       .unwrap_or(587),
-    username: env::var("SMTP_USERNAME")?,
-    password: env::var("SMTP_PASSWORD")?,
-    from_email: env::var("SMTP_FROM_EMAIL")?,
+    username: env::var("SMTP_USERNAME").expect("SMTP_USERNAME environment variable must be set."),
+    password: env::var("SMTP_PASSWORD").expect("SMTP_PASSWORD environment variable must be set."),
+    from_email: env::var("SMTP_FROM_EMAIL").expect("SMTP_FROM_EMAIL environment variable must be set."),
   };
 
   let email_service = EmailService::new(smtp_config)?;

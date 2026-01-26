@@ -9,7 +9,7 @@ pub struct Claims {
 }
 
 pub fn decode_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-  let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "default_secret_key".to_string());
+  let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET environment variable must be set.");
 
   let token_data = decode::<Claims>(
     token,
@@ -21,7 +21,7 @@ pub fn decode_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
 }
 
 pub fn encode_jwt(claims: Claims) -> Result<String, jsonwebtoken::errors::Error> {
-  let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "default_secret_key".to_string());
+  let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET environment variable must be set.");
 
   encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))
 }

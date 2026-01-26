@@ -14,9 +14,9 @@ impl Default for SmtpConfig {
     SmtpConfig {
       host: "smtp.gmail.com".to_string(),
       port: 587,
-      username: std::env::var("SMTP_USERNAME").unwrap_or_default(),
-      password: std::env::var("SMTP_PASSWORD").unwrap_or_default(),
-      from_email: std::env::var("SMTP_FROM_EMAIL").unwrap_or_default(),
+      username: "".to_string(),
+      password: "".to_string(),
+      from_email: "".to_string(),
     }
   }
 }
