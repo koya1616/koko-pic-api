@@ -2,15 +2,9 @@ use tokio::signal;
 
 use dotenvy::dotenv;
 
-mod app;
-mod db;
-mod domains;
-mod state;
-mod utils;
-
-use app::create_app;
-use db::pool::create_pool;
-use state::SharedAppState;
+use koko_pic_api::app::create_app;
+use koko_pic_api::db::pool::create_pool;
+use koko_pic_api::state::SharedAppState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -4,5 +4,5 @@ pub mod domains;
 pub mod state;
 pub mod utils;
 
-// Re-export commonly used types
-pub use state::SharedAppState;
+#[cfg(test)]
+mod test_support;

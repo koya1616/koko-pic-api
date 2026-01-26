@@ -80,3 +80,25 @@ impl User {
     Ok(user)
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::User;
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn create_and_find_user(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let created = User::create(&pool, "db-test@example.com", "DB Test", "password123").await?;
+    let found = User::find_by_email(&pool, "db-test@example.com").await?;
+    let found = found.expect("user should exist");
+    assert_eq!(created.id, found.id);
+    assert_eq!(created.email, found.email);
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn find_user_returns_none(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let found = User::find_by_email(&pool, "missing@example.com").await?;
+    assert!(found.is_none());
+    Ok(())
+  }
+}

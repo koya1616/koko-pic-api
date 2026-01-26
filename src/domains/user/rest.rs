@@ -36,3 +36,62 @@ pub async fn login_handler(
     },
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::super::model::CreateUserRequest;
+  use crate::test_support::{app_with_pool, post_json};
+  use axum::http::StatusCode;
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn create_user_endpoint_returns_user(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool).await;
+    let payload = CreateUserRequest {
+      email: "api-create@example.com".to_string(),
+      display_name: "API Create".to_string(),
+      password: "password123".to_string(),
+    };
+    let (status, body) = post_json(app, "/api/v1/users", &payload).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let user: super::super::model::User = serde_json::from_slice(&body).expect("deserialize response");
+    assert_eq!(user.email, payload.email);
+    assert_eq!(user.display_name, payload.display_name);
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn login_success(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool).await;
+    let create_payload = CreateUserRequest {
+      email: "api-login@example.com".to_string(),
+      display_name: "API Login".to_string(),
+      password: "password123".to_string(),
+    };
+    let (status, _body) = post_json(app.clone(), "/api/v1/users", &create_payload).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let login_payload = super::super::model::LoginRequest {
+      email: "api-login@example.com".to_string(),
+      password: "password123".to_string(),
+    };
+    let (status, body) = post_json(app, "/api/v1/login", &login_payload).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let response: super::super::model::LoginResponse = serde_json::from_slice(&body).expect("deserialize response");
+    assert_eq!(response.email, "api-login@example.com");
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn login_unauthorized(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool).await;
+    let login_payload = super::super::model::LoginRequest {
+      email: "missing@example.com".to_string(),
+      password: "password123".to_string(),
+    };
+    let (status, _body) = post_json(app, "/api/v1/login", &login_payload).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    Ok(())
+  }
+}
