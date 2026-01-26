@@ -22,6 +22,7 @@ jobs:
 
       - name: Run migrations on Neon branch
         run: |
+          echo "${{ secrets.NEON_DATABASE_URL }}"
           DATABASE_URL=${{ secrets.NEON_DATABASE_URL }} sqlx migrate run
 
       - name: Set up Docker Buildx
