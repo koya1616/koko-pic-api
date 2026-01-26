@@ -87,10 +87,6 @@ jobs:
         run: |
           koyeb service update unknown-damselfly/koko-pic-api --env "DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }}"
 
-      - name: Redeploy to Koyeb
-        run: |
-          koyeb service redeploy unknown-damselfly/koko-pic-api
-
   delete_neon_branch:
     name: Delete Neon Branch
     needs: setup
