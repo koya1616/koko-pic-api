@@ -17,6 +17,13 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 # Stage 3: 依存関係のビルド（キャッシュ効率化）
 FROM chef AS builder
+
+# 必要な開発パッケージをインストール
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=planner /app/recipe.json recipe.json
 
 # 依存関係のみをビルド（ここがキャッシュされる）
