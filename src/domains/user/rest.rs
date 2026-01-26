@@ -62,14 +62,8 @@ mod tests {
 
   #[sqlx::test(migrations = "./migrations")]
   async fn login_success(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
-    let app = app_with_pool(pool).await;
-    let create_payload = CreateUserRequest {
-      email: "api-login@example.com".to_string(),
-      display_name: "API Login".to_string(),
-      password: "password123".to_string(),
-    };
-    let (status, _body) = post_json(app.clone(), "/api/v1/users", &create_payload).await;
-    assert_eq!(status, StatusCode::OK);
+    let app = app_with_pool(pool.clone()).await;
+    super::super::model::User::create(&pool, "api-login@example.com", "API Login", "password123").await?;
 
     let login_payload = super::super::model::LoginRequest {
       email: "api-login@example.com".to_string(),
