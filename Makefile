@@ -4,8 +4,11 @@
 # 開発用
 # ============================================
 
+prune:
+	docker system prune -a
+
 build:
-	docker builder prune -a && docker compose build --no-cache
+	docker compose build --no-cache
 
 up:
 	docker compose up
@@ -27,6 +30,15 @@ ps:
 
 check:
 	docker exec koko-pic-api-app-1 sh -c "cargo fmt && cargo clippy && cargo test"
+
+sqlx-i:
+	docker compose exec app cargo install sqlx-cli \
+		--no-default-features \
+		--features postgres \
+		--locked
+
+sqlx-m:
+	docker compose exec app sqlx migrate run
 
 # ============================================
 # 本番用
