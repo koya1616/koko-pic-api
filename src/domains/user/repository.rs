@@ -17,7 +17,6 @@ pub trait VerificationTokenRepository: Send + Sync {
     &self,
     user_id: i32,
     token_type: &str,
-    expires_at: chrono::DateTime<chrono::Utc>,
   ) -> Result<VerificationToken, RepositoryError>;
   async fn find_token_by_value(&self, token: &str) -> Result<Option<VerificationToken>, RepositoryError>;
   async fn mark_token_as_used(&self, token_id: i32) -> Result<VerificationToken, RepositoryError>;
@@ -93,9 +92,8 @@ impl VerificationTokenRepository for SqlxVerificationTokenRepository {
     &self,
     user_id: i32,
     token_type: &str,
-    expires_at: chrono::DateTime<chrono::Utc>,
   ) -> Result<VerificationToken, RepositoryError> {
-    Ok(VerificationToken::create(&self.pool, user_id, token_type, expires_at).await?)
+    Ok(VerificationToken::create(&self.pool, user_id, token_type).await?)
   }
 
   async fn find_token_by_value(&self, token: &str) -> Result<Option<VerificationToken>, RepositoryError> {

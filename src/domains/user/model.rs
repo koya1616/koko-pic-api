@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgExecutor, PgPool};
 use uuid::Uuid;
@@ -139,13 +139,11 @@ impl User {
 }
 
 impl VerificationToken {
-  pub async fn create(
-    db: &PgPool,
-    user_id: i32,
-    token_type: &str,
-    expires_at: DateTime<Utc>,
-  ) -> Result<VerificationToken, sqlx::Error> {
-    let token = Uuid::new_v4().to_string(); // UUIDを使用して安全なトークンを生成
+  pub async fn create(db: &PgPool, user_id: i32, token_type: &str) -> Result<VerificationToken, sqlx::Error> {
+    let token = Uuid::new_v4().to_string();
+    let expires_at = Utc::now()
+      .checked_add_signed(Duration::hours(24))
+      .ok_or_else(|| sqlx::Error::Decode("Failed to calculate expiration time".into()))?;
 
     let verification_token = sqlx::query_as!(
       VerificationToken,

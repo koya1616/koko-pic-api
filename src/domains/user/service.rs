@@ -144,13 +144,9 @@ where
   }
 
   async fn send_verification_email(&self, user_id: i32) -> Result<(), UserServiceError> {
-    let expires_at = Utc::now()
-      .checked_add_signed(Duration::hours(24))
-      .ok_or_else(|| UserServiceError::InternalServerError("Failed to calculate expiration time".to_string()))?;
-
     let verification_token = self
       .verification_token_repository
-      .create_verification_token(user_id, "email_verification", expires_at)
+      .create_verification_token(user_id, "email_verification")
       .await?;
 
     let user = self
@@ -287,11 +283,7 @@ mod tests {
     let user = User::create(&pool, "verify@example.com", "Verify Test", "password123").await?;
     assert!(!user.email_verified);
 
-    let expires_at = Utc::now()
-      .checked_add_signed(Duration::hours(24))
-      .ok_or("Failed to create expiration time")?;
-
-    let verification_token = VerificationToken::create(&pool, user.id, "email_verification", expires_at).await?;
+    let verification_token = VerificationToken::create(&pool, user.id, "email_verification").await?;
 
     let user_repo = SqlxUserRepository::new(pool.clone());
     let token_repo = SqlxVerificationTokenRepository::new(pool.clone());
