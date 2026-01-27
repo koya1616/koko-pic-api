@@ -74,9 +74,26 @@ jobs:
         with:
           api_token: "${{ secrets.KOYEB_API_TOKEN }}"
 
-      - name: Update Koyeb service with DATABASE_URL
+      - name: Fetch Vercel dev deployment URL
+        env:
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          koyeb service update unknown-damselfly/koko-pic-api --env "DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }}"
+          response=$(curl -sS --request GET \
+            --url "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}" \
+            --header "Authorization: Bearer ${VERCEL_API_TOKEN}")
+          frontend_url=$(echo "$response" | jq -r '.deployments[] | select(.meta.githubCommitRef=="dev") | .url' | head -n 1)
+          if [ -z "$frontend_url" ] || [ "$frontend_url" = "null" ]; then
+            echo "No Vercel deployment found for githubCommitRef=dev" >&2
+            exit 1
+          fi
+          echo "FRONTEND_URL=https://${frontend_url}" >> "$GITHUB_ENV"
+
+      - name: Update Koyeb service with DATABASE_URL and FRONTEND_URL
+        run: |
+          koyeb service update unknown-damselfly/koko-pic-api \
+            --env "DATABASE_URL=${{ steps.create_neon_branch.outputs.db_url }}" \
+            --env "FRONTEND_URL=${{ env.FRONTEND_URL }}"
 
   delete_neon_branch:
     name: Delete Neon Branch

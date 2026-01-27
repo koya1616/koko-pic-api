@@ -43,6 +43,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/users/me:
+    get:
+      summary: Get current user information
+      description: Retrieve information about the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error
           content:
@@ -66,6 +103,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           description: Unauthorized - Invalid credentials
           content:
@@ -97,7 +140,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/VerifyEmailResponse'
         '400':
           description: Invalid token
           content:
@@ -125,7 +168,7 @@ paths:
   /api/v1/resend-verification:
     post:
       summary: Resend verification email
-      description: Resend the verification email to the user
+      description: Resend the verification email to the specified email address
       tags:
         - Verification
       requestBody:
@@ -133,19 +176,18 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                user_id:
-                  type: integer
-                  format: int32
-                  description: User's unique identifier
-              required:
-                - user_id
+              $ref: '#/components/schemas/ResendVerificationRequest'
       responses:
         '200':
           description: Verification email resent successfully
         '400':
-          description: Bad request - invalid user ID
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
           content:
             application/json:
               schema:
@@ -176,10 +218,6 @@ components:
           type: boolean
           description: Whether the user's email has been verified
           default: false
-        password:
-          type: string
-          format: password
-          description: Hashed password (never exposed in responses)
         created_at:
           type: string
           format: date-time
@@ -190,7 +228,6 @@ components:
         - email
         - display_name
         - email_verified
-        - password
         - created_at
     CreateUserRequest:
       type: object
@@ -246,6 +283,37 @@ components:
         - user_id
         - email
         - display_name
+    VerifyEmailResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token for authentication
+        user_id:
+          type: integer
+          format: int32
+          description: User's unique identifier
+        email:
+          type: string
+          format: email
+          description: User's email address
+        display_name:
+          type: string
+          description: User's display name
+      required:
+        - token
+        - user_id
+        - email
+        - display_name
+    ResendVerificationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address to resend verification to
+      required:
+        - email
     Error:
       type: object
       properties:

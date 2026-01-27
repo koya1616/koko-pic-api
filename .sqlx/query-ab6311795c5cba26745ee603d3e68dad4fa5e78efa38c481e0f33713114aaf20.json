@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n          UPDATE users\n          SET email_verified = TRUE\n          WHERE id = $1\n          RETURNING id, email, display_name, password, email_verified, created_at\n      ",
+  "query": "\n          SELECT id, user_id, token, token_type, expires_at, used_at, created_at\n          FROM verification_tokens\n          WHERE token = $1\n          FOR UPDATE\n      ",
   "describe": {
     "columns": [
       {
@@ -10,33 +10,38 @@
       },
       {
         "ordinal": 1,
-        "name": "email",
-        "type_info": "Varchar"
+        "name": "user_id",
+        "type_info": "Int4"
       },
       {
         "ordinal": 2,
-        "name": "display_name",
+        "name": "token",
         "type_info": "Varchar"
       },
       {
         "ordinal": 3,
-        "name": "password",
+        "name": "token_type",
         "type_info": "Varchar"
       },
       {
         "ordinal": 4,
-        "name": "email_verified",
-        "type_info": "Bool"
+        "name": "expires_at",
+        "type_info": "Timestamptz"
       },
       {
         "ordinal": 5,
+        "name": "used_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Int4"
+        "Text"
       ]
     },
     "nullable": [
@@ -45,8 +50,9 @@
       false,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "5be758303beb43e276ba3898a4c23bc8627f7ff4ab29757b5fa1cdc6d217f2b4"
+  "hash": "ab6311795c5cba26745ee603d3e68dad4fa5e78efa38c481e0f33713114aaf20"
 }

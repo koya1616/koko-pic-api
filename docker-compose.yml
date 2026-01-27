@@ -15,6 +15,7 @@ services:
       - SMTP_USERNAME=test
       - SMTP_PASSWORD=test
       - SMTP_FROM_EMAIL=koko-pic@example.com
+      - FRONTEND_URL=http://localhost:1420
     depends_on:
       - postgres
       - mailhog

@@ -7,3 +7,5 @@ pub mod utils;
 
 #[cfg(test)]
 mod test_support;
+
+pub use utils::error::AppError;

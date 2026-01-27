@@ -45,3 +45,36 @@ pub async fn post_json<T: Serialize>(app: Router, uri: &str, body: &T) -> (Statu
     .expect("read response body");
   (status, body)
 }
+
+pub async fn get(app: Router, uri: &str) -> (StatusCode, Bytes) {
+  let request = Request::builder()
+    .method("GET")
+    .uri(uri)
+    .header("content-type", "application/json")
+    .body(Body::empty())
+    .expect("build request");
+
+  let response = app.oneshot(request).await.expect("handle request");
+  let status = response.status();
+  let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+    .await
+    .expect("read response body");
+  (status, body)
+}
+
+pub async fn get_with_auth(app: Router, uri: &str, token: &str) -> (StatusCode, Bytes) {
+  let request = Request::builder()
+    .method("GET")
+    .uri(uri)
+    .header("content-type", "application/json")
+    .header("authorization", format!("Bearer {}", token))
+    .body(Body::empty())
+    .expect("build request");
+
+  let response = app.oneshot(request).await.expect("handle request");
+  let status = response.status();
+  let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+    .await
+    .expect("read response body");
+  (status, body)
+}
