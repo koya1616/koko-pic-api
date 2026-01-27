@@ -57,6 +57,12 @@ pub struct VerifyEmailResponse {
   pub display_name: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+pub struct ResendVerificationRequest {
+  #[validate(email(message = "メールアドレスが無効です"))]
+  pub email: String,
+}
+
 impl User {
   pub async fn create(db: &PgPool, email: &str, display_name: &str, password: &str) -> Result<User, sqlx::Error> {
     Self::create_with_executor(db, email, display_name, password).await

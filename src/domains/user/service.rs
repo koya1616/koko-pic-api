@@ -60,6 +60,7 @@ pub trait UserService: Send + Sync {
   async fn create_user(&self, req: CreateUserRequest) -> Result<User, UserServiceError>;
   async fn login(&self, req: LoginRequest) -> Result<LoginResponse, UserServiceError>;
   async fn send_verification_email(&self, user_id: i32) -> Result<(), UserServiceError>;
+  async fn send_verification_email_by_email(&self, email: String) -> Result<(), UserServiceError>;
   async fn verify_email(&self, token: String) -> Result<VerifyEmailResponse, UserServiceError>;
   async fn get_user_by_id(&self, user_id: i32) -> Result<User, UserServiceError>;
 }
@@ -169,6 +170,16 @@ where
       tracing::error!("Failed to send verification email to user {}: {:?}", user_id, e);
     } else {
       tracing::info!("Verification email sent to user {}", user_id);
+    }
+
+    Ok(())
+  }
+
+  async fn send_verification_email_by_email(&self, email: String) -> Result<(), UserServiceError> {
+    if let Some(user) = self.user_repository.find_by_email(&email).await? {
+      if !user.email_verified {
+        self.send_verification_email(user.id).await?;
+      }
     }
 
     Ok(())

@@ -4,8 +4,9 @@ use axum::{
   response::Json as JsonResponse,
   routing::{get, post, Router},
 };
+use validator::Validate;
 
-use super::model::{CreateUserRequest, LoginRequest};
+use super::model::{CreateUserRequest, LoginRequest, ResendVerificationRequest};
 use crate::{
   state::{AppState, SharedAppState},
   utils::jwt::Claims,
@@ -98,13 +99,14 @@ pub async fn get_current_user_handler(
 
 pub async fn resend_verification_handler(
   State(state): State<SharedAppState>,
-  headers: HeaderMap,
+  Json(payload): Json<ResendVerificationRequest>,
 ) -> Result<(), AppError> {
-  let claims = auth_middleware(headers).await?;
-  let user_id = claims.user_id;
+  payload
+    .validate()
+    .map_err(|e| AppError::bad_request(format!("Validation failed: {}", e)))?;
 
   state
-    .send_verification_email(user_id)
+    .send_verification_email_by_email(payload.email)
     .await
     .map(|_| ())
     .map_err(map_user_service_error)

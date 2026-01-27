@@ -28,6 +28,10 @@ pub trait AppState: Clone + Send + Sync + 'static {
     &self,
     user_id: i32,
   ) -> impl std::future::Future<Output = Result<(), UserServiceError>> + Send;
+  fn send_verification_email_by_email(
+    &self,
+    email: String,
+  ) -> impl std::future::Future<Output = Result<(), UserServiceError>> + Send;
   fn get_user_by_id(&self, user_id: i32) -> impl std::future::Future<Output = Result<User, UserServiceError>> + Send;
 }
 
@@ -65,6 +69,10 @@ impl AppState for SharedAppState {
 
   async fn send_verification_email(&self, user_id: i32) -> Result<(), UserServiceError> {
     self.user_service.send_verification_email(user_id).await
+  }
+
+  async fn send_verification_email_by_email(&self, email: String) -> Result<(), UserServiceError> {
+    self.user_service.send_verification_email_by_email(email).await
   }
 
   async fn get_user_by_id(&self, user_id: i32) -> Result<User, UserServiceError> {
