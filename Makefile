@@ -36,7 +36,8 @@ sqlx:
 		--no-default-features \
 		--features postgres \
 		--locked && \
-		docker compose exec app sqlx migrate run
+		docker compose exec app sqlx migrate run && \
+		docker compose exec app cargo sqlx prepare
 
 # ============================================
 # 本番用
