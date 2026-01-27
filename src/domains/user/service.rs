@@ -4,7 +4,7 @@ use std::error::Error;
 use validator::Validate;
 
 use super::{
-  model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerifyEmailResponse},
+  model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerificationToken, VerifyEmailResponse},
   repository::{RepositoryError, UserRepository, VerificationTokenRepository},
 };
 use crate::{
@@ -83,6 +83,30 @@ where
       email_service,
     }
   }
+
+  async fn send_verification_email_to_user(
+    &self,
+    user: &User,
+    verification_token: &str,
+  ) -> Result<(), UserServiceError> {
+    let subject = "メールアドレスを確認してください";
+    let body = format!(
+      "こんにちは、\n\n以下のトークンを使用してメールアドレスを確認してください:\n\n{}\n\nこのトークンは24時間有効です。\n\nよろしくお願いします。",
+      verification_token
+    );
+
+    if let Err(e) = self
+      .email_service
+      .send_simple_text_email(&user.email, subject, &body)
+      .await
+    {
+      tracing::error!("Failed to send verification email to user {}: {:?}", user.id, e);
+    } else {
+      tracing::info!("Verification email sent to user {}", user.id);
+    }
+
+    Ok(())
+  }
 }
 
 #[async_trait]
@@ -96,12 +120,17 @@ where
       .validate()
       .map_err(|e| UserServiceError::ValidationError(format!("Validation failed: {}", e)))?;
 
-    let user = self
-      .user_repository
-      .create(&req.email, &req.display_name, &req.password)
-      .await?;
+    let pool = self.user_repository.get_pool();
+    let mut tx = pool.begin().await?;
+    let user = User::create_with_executor(&mut *tx.as_mut(), &req.email, &req.display_name, &req.password).await?;
+    let verification_token =
+      VerificationToken::create_with_executor(&mut *tx.as_mut(), user.id, "email_verification").await?;
 
-    self.send_verification_email(user.id).await?;
+    tx.commit().await?;
+
+    self
+      .send_verification_email_to_user(&user, &verification_token.token)
+      .await?;
 
     Ok(user)
   }
@@ -156,21 +185,9 @@ where
       .await?
       .ok_or_else(|| UserServiceError::UserNotFound("User not found".to_string()))?;
 
-    let subject = "メールアドレスを確認してください";
-    let body = format!(
-      "こんにちは、\n\n以下のトークンを使用してメールアドレスを確認してください:\n\n{}\n\nこのトークンは24時間有効です。\n\nよろしくお願いします。",
-      verification_token.token
-    );
-
-    if let Err(e) = self
-      .email_service
-      .send_simple_text_email(&user.email, subject, &body)
-      .await
-    {
-      tracing::error!("Failed to send verification email to user {}: {:?}", user_id, e);
-    } else {
-      tracing::info!("Verification email sent to user {}", user_id);
-    }
+    self
+      .send_verification_email_to_user(&user, &verification_token.token)
+      .await?;
 
     Ok(())
   }
@@ -186,9 +203,9 @@ where
   }
 
   async fn verify_email(&self, token: String) -> Result<VerifyEmailResponse, UserServiceError> {
-    let verification_token = self
-      .verification_token_repository
-      .find_token_by_value(&token)
+    let pool = self.user_repository.get_pool();
+    let mut tx = pool.begin().await?;
+    let verification_token = VerificationToken::find_by_token_for_update(&mut *tx.as_mut(), &token)
       .await?
       .ok_or_else(|| UserServiceError::InvalidToken("Invalid verification token".to_string()))?;
 
@@ -204,12 +221,10 @@ where
       ));
     }
 
-    let user = User::verify_email(self.user_repository.get_pool(), verification_token.user_id).await?;
+    let user = User::verify_email_with_executor(&mut *tx.as_mut(), verification_token.user_id).await?;
+    VerificationToken::mark_as_used_with_executor(&mut *tx.as_mut(), verification_token.id).await?;
 
-    self
-      .verification_token_repository
-      .mark_token_as_used(verification_token.id)
-      .await?;
+    tx.commit().await?;
 
     let expiration = Utc::now()
       .checked_add_signed(Duration::hours(24))

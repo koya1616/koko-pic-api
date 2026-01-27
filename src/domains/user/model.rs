@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, PgExecutor, PgPool};
+use sqlx::{Executor, FromRow, PgPool, Postgres};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -75,7 +75,7 @@ impl User {
     password: &str,
   ) -> Result<User, sqlx::Error>
   where
-    E: PgExecutor<'e>,
+    E: Executor<'e, Database = Postgres>,
   {
     let hashed_password = crate::utils::hash_password(password);
 
@@ -98,7 +98,7 @@ impl User {
 
   pub async fn find_by_email<'e, E>(executor: E, email: &str) -> Result<Option<User>, sqlx::Error>
   where
-    E: PgExecutor<'e>,
+    E: Executor<'e, Database = Postgres>,
   {
     let user = sqlx::query_as!(
       User,
@@ -113,7 +113,7 @@ impl User {
 
   pub async fn find_by_id<'e, E>(executor: E, id: i32) -> Result<Option<User>, sqlx::Error>
   where
-    E: PgExecutor<'e>,
+    E: Executor<'e, Database = Postgres>,
   {
     let user = sqlx::query_as!(
       User,
@@ -127,17 +127,24 @@ impl User {
   }
 
   pub async fn verify_email(db: &PgPool, user_id: i32) -> Result<User, sqlx::Error> {
+    Self::verify_email_with_executor(db, user_id).await
+  }
+
+  pub async fn verify_email_with_executor<'e, E>(executor: E, user_id: i32) -> Result<User, sqlx::Error>
+  where
+    E: Executor<'e, Database = Postgres>,
+  {
     let user = sqlx::query_as!(
       User,
       r#"
-          UPDATE users
-          SET email_verified = TRUE
-          WHERE id = $1
-          RETURNING id, email, display_name, password, email_verified, created_at
-      "#,
+            UPDATE users
+            SET email_verified = TRUE
+            WHERE id = $1
+            RETURNING id, email, display_name, password, email_verified, created_at
+        "#,
       user_id
     )
-    .fetch_one(db)
+    .fetch_one(executor)
     .await?;
 
     Ok(user)
@@ -146,6 +153,17 @@ impl User {
 
 impl VerificationToken {
   pub async fn create(db: &PgPool, user_id: i32, token_type: &str) -> Result<VerificationToken, sqlx::Error> {
+    Self::create_with_executor(db, user_id, token_type).await
+  }
+
+  pub async fn create_with_executor<'e, E>(
+    executor: E,
+    user_id: i32,
+    token_type: &str,
+  ) -> Result<VerificationToken, sqlx::Error>
+  where
+    E: Executor<'e, Database = Postgres>,
+  {
     let token = Uuid::new_v4().to_string();
     let expires_at = Utc::now()
       .checked_add_signed(Duration::hours(24))
@@ -163,7 +181,7 @@ impl VerificationToken {
       token_type,
       expires_at
     )
-    .fetch_one(db)
+    .fetch_one(executor)
     .await?;
 
     Ok(verification_token)
@@ -171,7 +189,7 @@ impl VerificationToken {
 
   pub async fn find_by_token<'e, E>(executor: E, token: &str) -> Result<Option<VerificationToken>, sqlx::Error>
   where
-    E: PgExecutor<'e>,
+    E: Executor<'e, Database = Postgres>,
   {
     let verification_token = sqlx::query_as!(
       VerificationToken,
@@ -188,7 +206,37 @@ impl VerificationToken {
     Ok(verification_token)
   }
 
+  pub async fn find_by_token_for_update<'e, E>(
+    executor: E,
+    token: &str,
+  ) -> Result<Option<VerificationToken>, sqlx::Error>
+  where
+    E: Executor<'e, Database = Postgres>,
+  {
+    let verification_token = sqlx::query_as!(
+      VerificationToken,
+      r#"
+          SELECT id, user_id, token, token_type, expires_at, used_at, created_at
+          FROM verification_tokens
+          WHERE token = $1
+          FOR UPDATE
+      "#,
+      token
+    )
+    .fetch_optional(executor)
+    .await?;
+
+    Ok(verification_token)
+  }
+
   pub async fn mark_as_used(db: &PgPool, token_id: i32) -> Result<VerificationToken, sqlx::Error> {
+    Self::mark_as_used_with_executor(db, token_id).await
+  }
+
+  pub async fn mark_as_used_with_executor<'e, E>(executor: E, token_id: i32) -> Result<VerificationToken, sqlx::Error>
+  where
+    E: Executor<'e, Database = Postgres>,
+  {
     let verification_token = sqlx::query_as!(
       VerificationToken,
       r#"
@@ -199,7 +247,7 @@ impl VerificationToken {
       "#,
       token_id
     )
-    .fetch_one(db)
+    .fetch_one(executor)
     .await?;
 
     Ok(verification_token)
