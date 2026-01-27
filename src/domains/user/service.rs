@@ -4,7 +4,7 @@ use std::error::Error;
 use validator::Validate;
 
 use super::{
-  model::{CreateUserRequest, LoginRequest, LoginResponse, User},
+  model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerifyEmailResponse},
   repository::{RepositoryError, UserRepository, VerificationTokenRepository},
 };
 use crate::{
@@ -60,7 +60,7 @@ pub trait UserService: Send + Sync {
   async fn create_user(&self, req: CreateUserRequest) -> Result<User, UserServiceError>;
   async fn login(&self, req: LoginRequest) -> Result<LoginResponse, UserServiceError>;
   async fn send_verification_email(&self, user_id: i32) -> Result<(), UserServiceError>;
-  async fn verify_email(&self, token: String) -> Result<User, UserServiceError>;
+  async fn verify_email(&self, token: String) -> Result<VerifyEmailResponse, UserServiceError>;
   async fn get_user_by_id(&self, user_id: i32) -> Result<User, UserServiceError>;
 }
 
@@ -178,7 +178,7 @@ where
     Ok(())
   }
 
-  async fn verify_email(&self, token: String) -> Result<User, UserServiceError> {
+  async fn verify_email(&self, token: String) -> Result<VerifyEmailResponse, UserServiceError> {
     let verification_token = self
       .verification_token_repository
       .find_token_by_value(&token)
@@ -204,7 +204,26 @@ where
       .mark_token_as_used(verification_token.id)
       .await?;
 
-    Ok(user)
+    let expiration = Utc::now()
+      .checked_add_signed(Duration::hours(24))
+      .ok_or_else(|| UserServiceError::InternalServerError("Failed to calculate expiration time".to_string()))?
+      .timestamp() as usize;
+
+    let claims = Claims {
+      sub: user.email.clone(),
+      exp: expiration,
+      user_id: user.id,
+    };
+
+    let token =
+      encode_jwt(claims).map_err(|e| UserServiceError::InternalServerError(format!("JWT encoding failed: {}", e)))?;
+
+    Ok(VerifyEmailResponse {
+      token,
+      user_id: user.id,
+      email: user.email,
+      display_name: user.display_name,
+    })
   }
 
   async fn get_user_by_id(&self, user_id: i32) -> Result<User, UserServiceError> {
@@ -275,14 +294,20 @@ mod tests {
     let verification_token = VerificationToken::create(&pool, user.id, "email_verification", expires_at).await?;
 
     let user_repo = SqlxUserRepository::new(pool.clone());
-    let token_repo = SqlxVerificationTokenRepository::new(pool);
+    let token_repo = SqlxVerificationTokenRepository::new(pool.clone());
     let email_service = create_test_email_service();
 
     let service = UserServiceImpl::new(user_repo, token_repo, email_service);
 
-    let verified_user = service.verify_email(verification_token.token).await?;
+    let verify_response = service.verify_email(verification_token.token).await?;
 
-    assert!(verified_user.email_verified);
+    assert_eq!(verify_response.user_id, user.id);
+    assert_eq!(verify_response.email, user.email);
+    assert_eq!(verify_response.display_name, user.display_name);
+    assert!(!verify_response.token.is_empty());
+
+    let updated_user = User::find_by_id(&pool, user.id).await?.unwrap();
+    assert!(updated_user.email_verified);
 
     Ok(())
   }

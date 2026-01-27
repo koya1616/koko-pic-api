@@ -49,6 +49,14 @@ pub struct LoginResponse {
   pub display_name: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct VerifyEmailResponse {
+  pub token: String,
+  pub user_id: i32,
+  pub email: String,
+  pub display_name: String,
+}
+
 impl User {
   pub async fn create(db: &PgPool, email: &str, display_name: &str, password: &str) -> Result<User, sqlx::Error> {
     Self::create_with_executor(db, email, display_name, password).await

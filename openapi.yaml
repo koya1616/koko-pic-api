@@ -140,7 +140,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/VerifyEmailResponse'
         '400':
           description: Invalid token
           content:
@@ -252,6 +252,28 @@ components:
         - email
         - password
     LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token for authentication
+        user_id:
+          type: integer
+          format: int32
+          description: User's unique identifier
+        email:
+          type: string
+          format: email
+          description: User's email address
+        display_name:
+          type: string
+          description: User's display name
+      required:
+        - token
+        - user_id
+        - email
+        - display_name
+    VerifyEmailResponse:
       type: object
       properties:
         token:

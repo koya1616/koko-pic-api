@@ -74,7 +74,7 @@ pub async fn login_handler(
 pub async fn verify_email_handler(
   State(state): State<SharedAppState>,
   axum::extract::Path(token): axum::extract::Path<String>,
-) -> Result<JsonResponse<super::model::User>, AppError> {
+) -> Result<JsonResponse<super::model::VerifyEmailResponse>, AppError> {
   state
     .verify_email(token)
     .await
