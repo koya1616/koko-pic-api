@@ -14,23 +14,12 @@ use crate::{
 
 use super::model::{Picture, PicturesResponse};
 
-fn map_picture_service_error(e: super::service::PictureServiceError) -> AppError {
-  match e {
-    super::service::PictureServiceError::InternalServerError(msg) => AppError::internal_server_error(msg),
-    super::service::PictureServiceError::BadRequest(msg) => AppError::bad_request(msg),
-  }
-}
-
 pub fn picture_routes() -> Router<SharedAppState> {
   Router::new().route("/pictures", get(get_pictures_handler).post(create_picture_handler))
 }
 
 async fn get_pictures_handler(State(state): State<SharedAppState>) -> Result<JsonResponse<PicturesResponse>, AppError> {
-  state
-    .get_pictures()
-    .await
-    .map(JsonResponse)
-    .map_err(map_picture_service_error)
+  state.get_pictures().await.map(JsonResponse).map_err(Into::into)
 }
 
 async fn create_picture_handler(
@@ -65,7 +54,7 @@ async fn create_picture_handler(
     .create_picture(user_id, image_url)
     .await
     .map(JsonResponse)
-    .map_err(map_picture_service_error)
+    .map_err(Into::into)
 }
 
 #[cfg(test)]

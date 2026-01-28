@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use sqlx::PgPool;
 use std::error::Error;
 
+use crate::impl_service_error_conversions;
+
 use super::model::{Picture, PicturesResponse};
 use super::repository;
 
@@ -22,11 +24,7 @@ impl std::fmt::Display for PictureServiceError {
   }
 }
 
-impl From<sqlx::Error> for PictureServiceError {
-  fn from(err: sqlx::Error) -> Self {
-    PictureServiceError::InternalServerError(format!("Database error: {}", err))
-  }
-}
+impl_service_error_conversions!(PictureServiceError, InternalServerError);
 
 #[async_trait]
 pub trait PictureService: Send + Sync {

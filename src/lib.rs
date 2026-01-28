@@ -2,6 +2,7 @@ pub mod app;
 pub mod db;
 pub mod domains;
 pub mod email;
+pub mod error;
 pub mod middleware;
 pub mod state;
 pub mod utils;

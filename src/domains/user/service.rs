@@ -3,6 +3,8 @@ use chrono::{Duration, Utc};
 use std::error::Error;
 use validator::Validate;
 
+use crate::impl_service_error_conversions;
+
 use super::{
   model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerificationToken, VerifyEmailResponse},
   repository::{RepositoryError, UserRepository, VerificationTokenRepository},
@@ -39,21 +41,7 @@ impl std::fmt::Display for UserServiceError {
   }
 }
 
-impl From<RepositoryError> for UserServiceError {
-  fn from(err: RepositoryError) -> Self {
-    match err {
-      RepositoryError::DatabaseError(e) => UserServiceError::InternalServerError(format!("Database error: {}", e)),
-      RepositoryError::NotFound(msg) => UserServiceError::UserNotFound(msg),
-      RepositoryError::Conflict(msg) => UserServiceError::InternalServerError(msg),
-    }
-  }
-}
-
-impl From<sqlx::Error> for UserServiceError {
-  fn from(err: sqlx::Error) -> Self {
-    UserServiceError::InternalServerError(format!("Database error: {}", err))
-  }
-}
+impl_service_error_conversions!(UserServiceError, InternalServerError, UserNotFound);
 
 #[async_trait]
 pub trait UserService: Send + Sync {
