@@ -90,10 +90,7 @@ where
     verification_token: &str,
   ) -> Result<(), UserServiceError> {
     let subject = "メールアドレスを確認してください";
-    let body = format!(
-      "こんにちは、\n\n以下のトークンを使用してメールアドレスを確認してください:\n\n{}\n\nこのトークンは24時間有効です。\n\nよろしくお願いします。",
-      verification_token
-    );
+    let body = EmailService::build_verification_email_body(verification_token);
 
     if let Err(e) = self
       .email_service
