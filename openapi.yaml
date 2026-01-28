@@ -418,51 +418,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/v1/pictures/{pictureId}/download:
-    get:
-      summary: 写真をダウンロード
-      description: 写真の元の画像ファイルをダウンロード
-      tags:
-        - Pictures
-      parameters:
-        - name: pictureId
-          in: path
-          required: true
-          description: ダウンロードする写真のID
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: OK
-          content:
-            image/*:
-              schema:
-                type: string
-                format: binary
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     bearerAuth:
