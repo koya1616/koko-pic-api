@@ -22,11 +22,11 @@ services:
       # S3 (RustFS)
       # ======================
       - S3_ENDPOINT=http://rustfs:9000
-      - S3_ACCESS_KEY=rustfs
-      - S3_SECRET_KEY=rustfssecret
+      - S3_PUBLIC_ENDPOINT=http://127.0.0.1:9000
+      - S3_ACCESS_KEY=kFPuRNwomSyA8Zlx0qHn
+      - S3_SECRET_KEY=MdpgKtYTPbQSBND0VhGH28WaIy5Rx3rifOZqU9ju
       - S3_REGION=us-east-1
-      - S3_BUCKET=local-bucket
-      - S3_FORCE_PATH_STYLE=true
+      - S3_BUCKET=dev
 
     depends_on:
       - postgres

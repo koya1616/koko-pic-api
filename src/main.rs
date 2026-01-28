@@ -6,6 +6,7 @@ use tower_http::cors::{Any, CorsLayer};
 use koko_pic_api::app::create_app;
 use koko_pic_api::db::pool::create_pool;
 use koko_pic_api::state::SharedAppState;
+use koko_pic_api::storage::S3Storage;
 use koko_pic_api::utils::init_email_service;
 
 #[tokio::main]
@@ -21,7 +22,8 @@ async fn main() -> anyhow::Result<()> {
   println!("Database migrations applied successfully");
 
   let email_service = init_email_service().await?;
-  let app_state = SharedAppState::new(pool, email_service).await;
+  let storage = S3Storage::new().await?;
+  let app_state = SharedAppState::new(pool, email_service, storage).await;
 
   let app = create_app(app_state).layer(
     CorsLayer::new()

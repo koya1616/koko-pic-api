@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use sqlx::PgPool;
 use std::error::Error;
+use uuid::Uuid;
 
 use crate::impl_service_error_conversions;
+use crate::storage::S3Storage;
 
 use super::model::{Picture, PicturesResponse};
 use super::repository;
@@ -30,15 +32,23 @@ impl_service_error_conversions!(PictureServiceError, InternalServerError);
 pub trait PictureService: Send + Sync {
   async fn get_pictures(&self) -> Result<PicturesResponse, PictureServiceError>;
   async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError>;
+  async fn upload_and_create_picture(
+    &self,
+    user_id: i32,
+    file_data: Vec<u8>,
+    file_name: String,
+    content_type: String,
+  ) -> Result<Picture, PictureServiceError>;
 }
 
 pub struct PictureServiceImpl {
   db: PgPool,
+  storage: S3Storage,
 }
 
 impl PictureServiceImpl {
-  pub fn new(db: PgPool) -> Self {
-    Self { db }
+  pub fn new(db: PgPool, storage: S3Storage) -> Self {
+    Self { db, storage }
   }
 }
 
@@ -50,6 +60,26 @@ impl PictureService for PictureServiceImpl {
   }
 
   async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError> {
+    let picture = repository::create(&self.db, user_id, &image_url).await?;
+    Ok(picture)
+  }
+
+  async fn upload_and_create_picture(
+    &self,
+    user_id: i32,
+    file_data: Vec<u8>,
+    file_name: String,
+    content_type: String,
+  ) -> Result<Picture, PictureServiceError> {
+    let extension = file_name.split('.').next_back().unwrap_or("jpg");
+    let unique_key = format!("pictures/{}/{}.{}", user_id, Uuid::new_v4(), extension);
+
+    let image_url = self
+      .storage
+      .upload_file(&unique_key, file_data, &content_type)
+      .await
+      .map_err(|e| PictureServiceError::InternalServerError(format!("Failed to upload to S3: {}", e)))?;
+
     let picture = repository::create(&self.db, user_id, &image_url).await?;
     Ok(picture)
   }

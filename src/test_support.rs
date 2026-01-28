@@ -11,6 +11,7 @@ use crate::{
   app::create_app,
   email::{EmailService, SmtpConfig},
   state::SharedAppState,
+  storage::S3Storage,
 };
 
 fn create_test_email_service() -> EmailService {
@@ -24,9 +25,20 @@ fn create_test_email_service() -> EmailService {
   EmailService::new(smtp_config).expect("Failed to create test email service")
 }
 
+async fn create_test_storage() -> S3Storage {
+  std::env::set_var("S3_ENDPOINT", "http://rustfs:9000");
+  std::env::set_var("S3_PUBLIC_ENDPOINT", "http://127.0.0.1:9000");
+  std::env::set_var("S3_ACCESS_KEY", "rustfs");
+  std::env::set_var("S3_SECRET_KEY", "rustfssecret");
+  std::env::set_var("S3_REGION", "us-east-1");
+  std::env::set_var("S3_BUCKET", "test");
+  S3Storage::new().await.expect("Failed to create test storage")
+}
+
 pub async fn app_with_pool(pool: PgPool) -> Router {
   let email_service = create_test_email_service();
-  let state = SharedAppState::new(pool, email_service).await;
+  let storage = create_test_storage().await;
+  let state = SharedAppState::new(pool, email_service, storage).await;
   create_app(state)
 }
 

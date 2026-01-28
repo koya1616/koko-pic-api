@@ -30,7 +30,9 @@ async fn create_picture_handler(
   let claims = auth_middleware(headers).await?;
   let user_id = claims.user_id;
 
-  let mut image_url: Option<String> = None;
+  let mut file_data: Option<Vec<u8>> = None;
+  let mut file_name: Option<String> = None;
+  let mut content_type: Option<String> = None;
 
   while let Some(field) = multipart
     .next_field()
@@ -40,18 +42,23 @@ async fn create_picture_handler(
     let name = field.name().unwrap_or("").to_string();
 
     if name == "file" {
-      let _data = field
+      file_name = field.file_name().map(|s| s.to_string());
+      content_type = field.content_type().map(|s| s.to_string());
+
+      let data = field
         .bytes()
         .await
         .map_err(|e| AppError::bad_request(format!("Failed to read file data: {}", e)))?;
-      image_url = Some("https://example.com/uploaded-image.jpg".to_string());
+      file_data = Some(data.to_vec());
     }
   }
 
-  let image_url = image_url.ok_or_else(|| AppError::bad_request("No file provided".to_string()))?;
+  let file_data = file_data.ok_or_else(|| AppError::bad_request("No file provided".to_string()))?;
+  let file_name = file_name.ok_or_else(|| AppError::bad_request("No file name provided".to_string()))?;
+  let content_type = content_type.unwrap_or_else(|| "application/octet-stream".to_string());
 
   state
-    .create_picture(user_id, image_url)
+    .upload_and_create_picture(user_id, file_data, file_name, content_type)
     .await
     .map(JsonResponse)
     .map_err(Into::into)

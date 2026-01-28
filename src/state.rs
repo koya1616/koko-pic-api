@@ -15,6 +15,7 @@ use crate::{
     },
   },
   email::EmailService,
+  storage::S3Storage,
 };
 
 pub trait AppState: Clone + Send + Sync + 'static {
@@ -45,6 +46,13 @@ pub trait AppState: Clone + Send + Sync + 'static {
     user_id: i32,
     image_url: String,
   ) -> impl std::future::Future<Output = Result<Picture, PictureServiceError>> + Send;
+  fn upload_and_create_picture(
+    &self,
+    user_id: i32,
+    file_data: Vec<u8>,
+    file_name: String,
+    content_type: String,
+  ) -> impl std::future::Future<Output = Result<Picture, PictureServiceError>> + Send;
 }
 
 #[derive(Clone)]
@@ -54,7 +62,7 @@ pub struct SharedAppState {
 }
 
 impl SharedAppState {
-  pub async fn new(pool: PgPool, email_service: EmailService) -> Self {
+  pub async fn new(pool: PgPool, email_service: EmailService, storage: S3Storage) -> Self {
     let user_repository = SqlxUserRepository::new(pool.clone());
     let verification_token_repository = SqlxVerificationTokenRepository::new(pool.clone());
     let user_service = Arc::new(UserServiceImpl::new(
@@ -63,7 +71,7 @@ impl SharedAppState {
       email_service,
     ));
 
-    let picture_service = Arc::new(PictureServiceImpl::new(pool));
+    let picture_service = Arc::new(PictureServiceImpl::new(pool, storage));
 
     Self {
       user_service,
@@ -103,5 +111,18 @@ impl AppState for SharedAppState {
 
   async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError> {
     self.picture_service.create_picture(user_id, image_url).await
+  }
+
+  async fn upload_and_create_picture(
+    &self,
+    user_id: i32,
+    file_data: Vec<u8>,
+    file_name: String,
+    content_type: String,
+  ) -> Result<Picture, PictureServiceError> {
+    self
+      .picture_service
+      .upload_and_create_picture(user_id, file_data, file_name, content_type)
+      .await
   }
 }
