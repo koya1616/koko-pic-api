@@ -31,6 +31,10 @@ impl AppError {
     Self::new(StatusCode::NOT_FOUND, message)
   }
 
+  pub fn forbidden(message: impl Into<String>) -> Self {
+    Self::new(StatusCode::FORBIDDEN, message)
+  }
+
   pub fn internal_server_error(message: impl Into<String>) -> Self {
     Self::new(StatusCode::INTERNAL_SERVER_ERROR, message)
   }
@@ -95,6 +99,8 @@ impl From<crate::domains::picture::service::PictureServiceError> for AppError {
     match error {
       PictureServiceError::InternalServerError(msg) => AppError::internal_server_error(msg),
       PictureServiceError::BadRequest(msg) => AppError::bad_request(msg),
+      PictureServiceError::NotFound(msg) => AppError::not_found(msg),
+      PictureServiceError::Forbidden(msg) => AppError::forbidden(msg),
     }
   }
 }

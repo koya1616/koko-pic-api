@@ -80,3 +80,19 @@ pub async fn get_with_auth(app: Router, uri: &str, token: &str) -> (StatusCode, 
     .expect("read response body");
   (status, body)
 }
+
+pub async fn delete_with_auth(app: Router, uri: &str, token: &str) -> (StatusCode, Bytes) {
+  let request = Request::builder()
+    .method("DELETE")
+    .uri(uri)
+    .header("authorization", format!("Bearer {}", token))
+    .body(Body::empty())
+    .expect("build request");
+
+  let response = app.oneshot(request).await.expect("handle request");
+  let status = response.status();
+  let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+    .await
+    .expect("read response body");
+  (status, body)
+}

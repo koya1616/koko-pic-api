@@ -76,4 +76,35 @@ impl S3Storage {
 
     Ok(url)
   }
+
+  pub async fn delete_file(&self, key: &str) -> Result<()> {
+    self
+      .client
+      .delete_object()
+      .bucket(&self.bucket)
+      .key(key)
+      .send()
+      .await
+      .map_err(|e| anyhow::anyhow!("Failed to delete file from S3: {:?}", e))?;
+
+    Ok(())
+  }
+
+  pub fn extract_key_from_url(&self, url: &str) -> Option<String> {
+    let endpoint_for_url = self.public_endpoint.as_ref().or(self.endpoint.as_ref());
+
+    if let Some(endpoint) = endpoint_for_url {
+      let prefix = format!("{}/{}/", endpoint, self.bucket);
+      if url.starts_with(&prefix) {
+        return Some(url[prefix.len()..].to_string());
+      }
+    } else {
+      let prefix = format!("https://{}.s3.amazonaws.com/", self.bucket);
+      if url.starts_with(&prefix) {
+        return Some(url[prefix.len()..].to_string());
+      }
+    }
+
+    None
+  }
 }

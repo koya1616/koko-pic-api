@@ -53,6 +53,11 @@ pub trait AppState: Clone + Send + Sync + 'static {
     file_name: String,
     content_type: String,
   ) -> impl std::future::Future<Output = Result<Picture, PictureServiceError>> + Send;
+  fn delete_picture(
+    &self,
+    picture_id: i32,
+    user_id: i32,
+  ) -> impl std::future::Future<Output = Result<(), PictureServiceError>> + Send;
 }
 
 #[derive(Clone)]
@@ -124,5 +129,9 @@ impl AppState for SharedAppState {
       .picture_service
       .upload_and_create_picture(user_id, file_data, file_name, content_type)
       .await
+  }
+
+  async fn delete_picture(&self, picture_id: i32, user_id: i32) -> Result<(), PictureServiceError> {
+    self.picture_service.delete_picture(picture_id, user_id).await
   }
 }

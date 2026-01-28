@@ -13,6 +13,8 @@ use super::repository;
 pub enum PictureServiceError {
   InternalServerError(String),
   BadRequest(String),
+  NotFound(String),
+  Forbidden(String),
 }
 
 impl Error for PictureServiceError {}
@@ -22,6 +24,8 @@ impl std::fmt::Display for PictureServiceError {
     match self {
       PictureServiceError::InternalServerError(msg) => write!(f, "Internal Server Error: {}", msg),
       PictureServiceError::BadRequest(msg) => write!(f, "Bad Request: {}", msg),
+      PictureServiceError::NotFound(msg) => write!(f, "Not Found: {}", msg),
+      PictureServiceError::Forbidden(msg) => write!(f, "Forbidden: {}", msg),
     }
   }
 }
@@ -39,6 +43,7 @@ pub trait PictureService: Send + Sync {
     file_name: String,
     content_type: String,
   ) -> Result<Picture, PictureServiceError>;
+  async fn delete_picture(&self, picture_id: i32, user_id: i32) -> Result<(), PictureServiceError>;
 }
 
 pub struct PictureServiceImpl {
@@ -82,5 +87,28 @@ impl PictureService for PictureServiceImpl {
 
     let picture = repository::create(&self.db, user_id, &image_url).await?;
     Ok(picture)
+  }
+
+  async fn delete_picture(&self, picture_id: i32, user_id: i32) -> Result<(), PictureServiceError> {
+    let picture = repository::find_by_id(&self.db, picture_id)
+      .await?
+      .ok_or_else(|| PictureServiceError::NotFound(format!("Picture with id {} not found", picture_id)))?;
+
+    if picture.user_id != user_id {
+      return Err(PictureServiceError::Forbidden(
+        "You do not have permission to delete this picture".to_string(),
+      ));
+    }
+
+    if let Some(key) = self.storage.extract_key_from_url(&picture.image_url) {
+      self
+        .storage
+        .delete_file(&key)
+        .await
+        .map_err(|e| PictureServiceError::InternalServerError(format!("Failed to delete from S3: {}", e)))?;
+    }
+
+    repository::delete(&self.db, picture_id).await?;
+    Ok(())
   }
 }

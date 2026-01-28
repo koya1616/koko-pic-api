@@ -329,7 +329,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/v1/pictures/{pictureId}:
+  /api/v1/pictures/{picture_id}:
     delete:
       summary: 写真を削除
       description: 認証されたユーザーが所有する写真を削除
@@ -338,7 +338,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: pictureId
+        - name: picture_id
           in: path
           required: true
           description: 削除する写真のID

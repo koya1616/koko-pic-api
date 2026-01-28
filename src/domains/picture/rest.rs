@@ -1,8 +1,8 @@
 use axum::{
-  extract::{Multipart, State},
+  extract::{Multipart, Path, State},
   http::HeaderMap,
   response::Json as JsonResponse,
-  routing::get,
+  routing::{delete, get},
   Router,
 };
 
@@ -15,7 +15,9 @@ use crate::{
 use super::model::{Picture, PicturesResponse};
 
 pub fn picture_routes() -> Router<SharedAppState> {
-  Router::new().route("/pictures", get(get_pictures_handler).post(create_picture_handler))
+  Router::new()
+    .route("/pictures", get(get_pictures_handler).post(create_picture_handler))
+    .route("/pictures/{picture_id}", delete(delete_picture_handler))
 }
 
 async fn get_pictures_handler(State(state): State<SharedAppState>) -> Result<JsonResponse<PicturesResponse>, AppError> {
@@ -64,9 +66,22 @@ async fn create_picture_handler(
     .map_err(Into::into)
 }
 
+async fn delete_picture_handler(
+  State(state): State<SharedAppState>,
+  headers: HeaderMap,
+  Path(picture_id): Path<i32>,
+) -> Result<(), AppError> {
+  let claims = auth_middleware(headers).await?;
+  let user_id = claims.user_id;
+
+  state.delete_picture(picture_id, user_id).await?;
+
+  Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-  use crate::test_support::{app_with_pool, get, post_json};
+  use crate::test_support::{app_with_pool, delete_with_auth, get, post_json};
   use axum::http::StatusCode;
 
   #[sqlx::test(migrations = "./migrations")]
@@ -180,6 +195,143 @@ mod tests {
     let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let picture: super::super::model::Picture = serde_json::from_slice(&body_bytes).expect("deserialize response");
     assert_eq!(picture.user_id, user.id);
+
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn delete_picture_unauthorized(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool.clone()).await;
+
+    let user =
+      crate::domains::user::model::User::create(&pool, "delete-test@example.com", "Delete Test", "password123").await?;
+
+    let picture_id = sqlx::query_scalar!(
+      "INSERT INTO pictures (user_id, image_url) VALUES ($1, $2) RETURNING id",
+      user.id,
+      "https://example.com/test.jpg"
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    let (status, _) = delete_with_auth(app, &format!("/api/v1/pictures/{}", picture_id), "invalid-token").await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn delete_picture_not_found(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool.clone()).await;
+
+    let _user =
+      crate::domains::user::model::User::create(&pool, "delete-test@example.com", "Delete Test", "password123").await?;
+
+    sqlx::query!(
+      "UPDATE users SET email_verified = true WHERE email = $1",
+      "delete-test@example.com"
+    )
+    .execute(&pool)
+    .await?;
+
+    let login_payload = crate::domains::user::model::LoginRequest {
+      email: "delete-test@example.com".to_string(),
+      password: "password123".to_string(),
+    };
+    let (login_status, login_body) = post_json(app.clone(), "/api/v1/login", &login_payload).await;
+    assert_eq!(login_status, StatusCode::OK);
+
+    let login_response: crate::domains::user::model::LoginResponse =
+      serde_json::from_slice(&login_body).expect("deserialize login response");
+    let token = login_response.token;
+
+    let (status, _) = delete_with_auth(app, "/api/v1/pictures/99999", &token).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn delete_picture_forbidden(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool.clone()).await;
+
+    let owner = crate::domains::user::model::User::create(&pool, "owner@example.com", "Owner", "password123").await?;
+    let _other_user =
+      crate::domains::user::model::User::create(&pool, "other@example.com", "Other", "password123").await?;
+
+    sqlx::query!(
+      "UPDATE users SET email_verified = true WHERE email = $1",
+      "other@example.com"
+    )
+    .execute(&pool)
+    .await?;
+
+    let picture_id = sqlx::query_scalar!(
+      "INSERT INTO pictures (user_id, image_url) VALUES ($1, $2) RETURNING id",
+      owner.id,
+      "https://example.com/test.jpg"
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    let login_payload = crate::domains::user::model::LoginRequest {
+      email: "other@example.com".to_string(),
+      password: "password123".to_string(),
+    };
+    let (login_status, login_body) = post_json(app.clone(), "/api/v1/login", &login_payload).await;
+    assert_eq!(login_status, StatusCode::OK);
+
+    let login_response: crate::domains::user::model::LoginResponse =
+      serde_json::from_slice(&login_body).expect("deserialize login response");
+    let token = login_response.token;
+
+    let (status, _) = delete_with_auth(app, &format!("/api/v1/pictures/{}", picture_id), &token).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn delete_picture_success(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool.clone()).await;
+
+    let user =
+      crate::domains::user::model::User::create(&pool, "delete-success@example.com", "Delete Success", "password123")
+        .await?;
+
+    sqlx::query!(
+      "UPDATE users SET email_verified = true WHERE email = $1",
+      "delete-success@example.com"
+    )
+    .execute(&pool)
+    .await?;
+
+    let picture_id = sqlx::query_scalar!(
+      "INSERT INTO pictures (user_id, image_url) VALUES ($1, $2) RETURNING id",
+      user.id,
+      "http://127.0.0.1:9000/test/pictures/1/test.jpg"
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    let login_payload = crate::domains::user::model::LoginRequest {
+      email: "delete-success@example.com".to_string(),
+      password: "password123".to_string(),
+    };
+    let (login_status, login_body) = post_json(app.clone(), "/api/v1/login", &login_payload).await;
+    assert_eq!(login_status, StatusCode::OK);
+
+    let login_response: crate::domains::user::model::LoginResponse =
+      serde_json::from_slice(&login_body).expect("deserialize login response");
+    let token = login_response.token;
+
+    let (status, _) = delete_with_auth(app, &format!("/api/v1/pictures/{}", picture_id), &token).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let picture = sqlx::query!("SELECT * FROM pictures WHERE id = $1", picture_id)
+      .fetch_optional(&pool)
+      .await?;
+    assert!(picture.is_none());
 
     Ok(())
   }
