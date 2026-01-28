@@ -262,13 +262,16 @@ mod tests {
       .expect("Failed to create test email service")
   }
 
-  #[sqlx::test(migrations = "./migrations")]
-  async fn test_create_user_with_verification(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
+  async fn create_test_service(pool: PgPool) -> UserServiceImpl<SqlxUserRepository, SqlxVerificationTokenRepository> {
     let user_repo = SqlxUserRepository::new(pool.clone());
     let token_repo = SqlxVerificationTokenRepository::new(pool);
     let email_service = create_test_email_service().await;
+    UserServiceImpl::new(user_repo, token_repo, email_service)
+  }
 
-    let service = UserServiceImpl::new(user_repo, token_repo, email_service);
+  #[sqlx::test(migrations = "./migrations")]
+  async fn test_create_user_with_verification(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
+    let service = create_test_service(pool).await;
 
     let req = CreateUserRequest {
       email: "test@example.com".to_string(),
@@ -291,11 +294,7 @@ mod tests {
 
     let verification_token = VerificationToken::create(&pool, user.id, "email_verification").await?;
 
-    let user_repo = SqlxUserRepository::new(pool.clone());
-    let token_repo = SqlxVerificationTokenRepository::new(pool.clone());
-    let email_service = create_test_email_service().await;
-
-    let service = UserServiceImpl::new(user_repo, token_repo, email_service);
+    let service = create_test_service(pool.clone()).await;
 
     let verify_response = service.verify_email(verification_token.token).await?;
 
@@ -315,10 +314,7 @@ mod tests {
     let user = User::create(&pool, "unverified@example.com", "Unverified User", "password123").await?;
     assert!(!user.email_verified);
 
-    let user_repo = SqlxUserRepository::new(pool.clone());
-    let token_repo = SqlxVerificationTokenRepository::new(pool);
-    let email_service = create_test_email_service().await;
-    let service = UserServiceImpl::new(user_repo, token_repo, email_service);
+    let service = create_test_service(pool).await;
 
     let login_req = LoginRequest {
       email: "unverified@example.com".to_string(),
