@@ -2,12 +2,13 @@ use async_trait::async_trait;
 use sqlx::PgPool;
 use std::error::Error;
 
-use super::model::PicturesResponse;
+use super::model::{Picture, PicturesResponse};
 use super::repository;
 
 #[derive(Debug)]
 pub enum PictureServiceError {
   InternalServerError(String),
+  BadRequest(String),
 }
 
 impl Error for PictureServiceError {}
@@ -16,6 +17,7 @@ impl std::fmt::Display for PictureServiceError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       PictureServiceError::InternalServerError(msg) => write!(f, "Internal Server Error: {}", msg),
+      PictureServiceError::BadRequest(msg) => write!(f, "Bad Request: {}", msg),
     }
   }
 }
@@ -29,6 +31,7 @@ impl From<sqlx::Error> for PictureServiceError {
 #[async_trait]
 pub trait PictureService: Send + Sync {
   async fn get_pictures(&self) -> Result<PicturesResponse, PictureServiceError>;
+  async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError>;
 }
 
 pub struct PictureServiceImpl {
@@ -46,5 +49,10 @@ impl PictureService for PictureServiceImpl {
   async fn get_pictures(&self) -> Result<PicturesResponse, PictureServiceError> {
     let pictures = repository::find_all(&self.db).await?;
     Ok(PicturesResponse { pictures })
+  }
+
+  async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError> {
+    let picture = repository::create(&self.db, user_id, &image_url).await?;
+    Ok(picture)
   }
 }

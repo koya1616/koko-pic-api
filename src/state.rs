@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use crate::{
   domains::{
     picture::{
-      model::PicturesResponse,
+      model::{Picture, PicturesResponse},
       service::{PictureService, PictureServiceError, PictureServiceImpl},
     },
     user::{
@@ -40,6 +40,11 @@ pub trait AppState: Clone + Send + Sync + 'static {
   ) -> impl std::future::Future<Output = Result<(), UserServiceError>> + Send;
   fn get_user_by_id(&self, user_id: i32) -> impl std::future::Future<Output = Result<User, UserServiceError>> + Send;
   fn get_pictures(&self) -> impl std::future::Future<Output = Result<PicturesResponse, PictureServiceError>> + Send;
+  fn create_picture(
+    &self,
+    user_id: i32,
+    image_url: String,
+  ) -> impl std::future::Future<Output = Result<Picture, PictureServiceError>> + Send;
 }
 
 #[derive(Clone)]
@@ -94,5 +99,9 @@ impl AppState for SharedAppState {
 
   async fn get_pictures(&self) -> Result<PicturesResponse, PictureServiceError> {
     self.picture_service.get_pictures().await
+  }
+
+  async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError> {
+    self.picture_service.create_picture(user_id, image_url).await
   }
 }

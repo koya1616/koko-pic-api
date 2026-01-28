@@ -23,3 +23,27 @@ where
 
   Ok(pictures)
 }
+
+pub async fn create(db: &PgPool, user_id: i32, image_url: &str) -> Result<Picture, sqlx::Error> {
+  create_with_executor(db, user_id, image_url).await
+}
+
+pub async fn create_with_executor<'e, E>(executor: E, user_id: i32, image_url: &str) -> Result<Picture, sqlx::Error>
+where
+  E: Executor<'e, Database = Postgres>,
+{
+  let picture = sqlx::query_as!(
+    Picture,
+    r#"
+      INSERT INTO pictures (user_id, image_url)
+      VALUES ($1, $2)
+      RETURNING id, user_id, image_url, created_at
+    "#,
+    user_id,
+    image_url
+  )
+  .fetch_one(executor)
+  .await?;
+
+  Ok(picture)
+}
