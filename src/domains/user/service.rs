@@ -7,7 +7,7 @@ use crate::impl_service_error_conversions;
 
 use super::{
   model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerificationToken, VerifyEmailResponse},
-  repository::{RepositoryError, UserRepository, VerificationTokenRepository},
+  repository::{UserRepository, VerificationTokenRepository},
 };
 use crate::{
   email::EmailService,
