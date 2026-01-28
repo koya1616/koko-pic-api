@@ -252,26 +252,21 @@ mod tests {
       model::{CreateUserRequest, VerificationToken},
       repository::{SqlxUserRepository, SqlxVerificationTokenRepository},
     },
-    email::{EmailService, SmtpConfig},
+    email::EmailService,
   };
   use sqlx::PgPool;
 
-  fn create_test_email_service() -> EmailService {
-    let smtp_config = SmtpConfig {
-      host: "localhost".to_string(),
-      port: 1025,
-      username: "test".to_string(),
-      password: "test".to_string(),
-      from_email: "noreply@test.com".to_string(),
-    };
-    EmailService::new(smtp_config).expect("Failed to create test email service")
+  async fn create_test_email_service() -> EmailService {
+    crate::utils::init_email_service()
+      .await
+      .expect("Failed to create test email service")
   }
 
   #[sqlx::test(migrations = "./migrations")]
   async fn test_create_user_with_verification(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
     let user_repo = SqlxUserRepository::new(pool.clone());
     let token_repo = SqlxVerificationTokenRepository::new(pool);
-    let email_service = create_test_email_service();
+    let email_service = create_test_email_service().await;
 
     let service = UserServiceImpl::new(user_repo, token_repo, email_service);
 
@@ -298,7 +293,7 @@ mod tests {
 
     let user_repo = SqlxUserRepository::new(pool.clone());
     let token_repo = SqlxVerificationTokenRepository::new(pool.clone());
-    let email_service = create_test_email_service();
+    let email_service = create_test_email_service().await;
 
     let service = UserServiceImpl::new(user_repo, token_repo, email_service);
 
@@ -322,7 +317,7 @@ mod tests {
 
     let user_repo = SqlxUserRepository::new(pool.clone());
     let token_repo = SqlxVerificationTokenRepository::new(pool);
-    let email_service = create_test_email_service();
+    let email_service = create_test_email_service().await;
     let service = UserServiceImpl::new(user_repo, token_repo, email_service);
 
     let login_req = LoginRequest {

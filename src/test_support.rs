@@ -7,22 +7,12 @@ use serde::Serialize;
 use sqlx::PgPool;
 use tower::ServiceExt;
 
-use crate::{
-  app::create_app,
-  email::{EmailService, SmtpConfig},
-  state::SharedAppState,
-  storage::S3Storage,
-};
+use crate::{app::create_app, email::EmailService, state::SharedAppState, storage::S3Storage};
 
-fn create_test_email_service() -> EmailService {
-  let smtp_config = SmtpConfig {
-    host: "localhost".to_string(),
-    port: 1025,
-    username: "test".to_string(),
-    password: "test".to_string(),
-    from_email: "noreply@test.com".to_string(),
-  };
-  EmailService::new(smtp_config).expect("Failed to create test email service")
+async fn create_test_email_service() -> EmailService {
+  crate::utils::init_email_service()
+    .await
+    .expect("Failed to create test email service")
 }
 
 async fn create_test_storage() -> S3Storage {
@@ -36,7 +26,7 @@ async fn create_test_storage() -> S3Storage {
 }
 
 pub async fn app_with_pool(pool: PgPool) -> Router {
-  let email_service = create_test_email_service();
+  let email_service = create_test_email_service().await;
   let storage = create_test_storage().await;
   let state = SharedAppState::new(pool, email_service, storage).await;
   create_app(state)

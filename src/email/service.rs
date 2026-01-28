@@ -69,7 +69,6 @@ mod tests {
   use std::env;
 
   #[tokio::test]
-  #[ignore]
   async fn test_send_email() -> Result<()> {
     dotenvy::dotenv().ok();
 
@@ -99,7 +98,6 @@ mod tests {
   }
 
   #[tokio::test]
-  #[ignore]
   async fn test_send_simple_text_email() -> Result<()> {
     dotenvy::dotenv().ok();
 
