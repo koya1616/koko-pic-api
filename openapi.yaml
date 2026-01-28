@@ -375,6 +375,221 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/requests:
+    get:
+      summary: リクエスト一覧取得
+      description: リクエスト一覧を取得。位置情報を送ると距離順にソートされる
+      tags:
+        - Requests
+      parameters:
+        - name: lat
+          in: query
+          required: false
+          description: ユーザーの現在位置(緯度)
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: false
+          description: ユーザーの現在位置(経度)
+          schema:
+            type: number
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RequestWithDistance'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: リクエスト作成
+      description: 新しいリクエストを作成
+      tags:
+        - Requests
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRequestInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Request'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/requests/{request_id}:
+    get:
+      summary: リクエスト詳細取得
+      description: 指定されたIDのリクエスト詳細を取得
+      tags:
+        - Requests
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          description: リクエストID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Request'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: リクエスト更新
+      description: 指定されたIDのリクエストを更新
+      tags:
+        - Requests
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          description: リクエストID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRequestInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Request'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: リクエスト削除
+      description: 指定されたIDのリクエストを削除
+      tags:
+        - Requests
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          description: リクエストID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -520,6 +735,92 @@ components:
         - user_id
         - image_url
         - created_at
+    Request:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: リクエストの固有識別子
+        lat:
+          type: number
+          format: double
+          description: リクエスト位置の緯度
+        lng:
+          type: number
+          format: double
+          description: リクエスト位置の経度
+        status:
+          type: string
+          enum: [open, in-progress, completed]
+          description: リクエストのステータス
+        placeName:
+          type: string
+          description: 場所の名前
+          nullable: true
+        description:
+          type: string
+          description: リクエストの説明
+      required:
+        - id
+        - lat
+        - lng
+        - status
+        - description
+    RequestWithDistance:
+      allOf:
+        - $ref: '#/components/schemas/Request'
+        - type: object
+          properties:
+            distance:
+              type: number
+              format: double
+              description: ユーザーからの距離(メートル単位)
+              nullable: true
+    CreateRequestInput:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: double
+          description: リクエスト位置の緯度
+        lng:
+          type: number
+          format: double
+          description: リクエスト位置の経度
+        placeName:
+          type: string
+          description: 場所の名前
+          nullable: true
+        description:
+          type: string
+          description: リクエストの説明
+      required:
+        - lat
+        - lng
+        - description
+    UpdateRequestInput:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: double
+          description: リクエスト位置の緯度
+        lng:
+          type: number
+          format: double
+          description: リクエスト位置の経度
+        status:
+          type: string
+          enum: [open, in-progress, completed]
+          description: リクエストのステータス
+        placeName:
+          type: string
+          description: 場所の名前
+          nullable: true
+        description:
+          type: string
+          description: リクエストの説明
     Error:
       type: object
       properties:
@@ -537,3 +838,5 @@ tags:
     description: メール検証エンドポイント
   - name: Pictures
     description: 写真管理エンドポイント
+  - name: Requests
+    description: リクエスト管理エンドポイント
