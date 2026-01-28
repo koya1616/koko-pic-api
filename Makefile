@@ -29,7 +29,7 @@ ps:
 	docker compose ps
 
 check:
-	docker exec koko-pic-api-app-1 sh -c "cargo fmt && cargo clippy && cargo test"
+	docker exec koko-pic-api-app-1 sh -c "cargo fmt && cargo clippy && cargo check && cargo test"
 
 sqlx:
 	docker compose exec app cargo install sqlx-cli \

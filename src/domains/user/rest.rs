@@ -8,8 +8,8 @@ use validator::Validate;
 
 use super::model::{CreateUserRequest, LoginRequest, ResendVerificationRequest};
 use crate::{
+  middleware::auth::auth_middleware,
   state::{AppState, SharedAppState},
-  utils::jwt::Claims,
   AppError,
 };
 
@@ -23,22 +23,6 @@ fn map_user_service_error(e: crate::domains::user::service::UserServiceError) ->
     crate::domains::user::service::UserServiceError::TokenAlreadyUsed(msg) => AppError::new(StatusCode::CONFLICT, msg),
     crate::domains::user::service::UserServiceError::UserNotFound(msg) => AppError::not_found(msg),
   }
-}
-
-async fn auth_middleware(headers: HeaderMap) -> Result<Claims, AppError> {
-  let auth_header = headers
-    .get(axum::http::header::AUTHORIZATION)
-    .ok_or_else(|| AppError::unauthorized("Authorization header missing"))?
-    .to_str()
-    .map_err(|_| AppError::unauthorized("Invalid authorization header"))?;
-
-  let token = auth_header
-    .strip_prefix("Bearer ")
-    .ok_or_else(|| AppError::unauthorized("Invalid authorization format"))?;
-
-  let claims = crate::utils::jwt::decode_jwt(token).map_err(|_| AppError::unauthorized("Invalid token"))?;
-
-  Ok(claims)
 }
 
 pub fn user_routes() -> Router<SharedAppState> {

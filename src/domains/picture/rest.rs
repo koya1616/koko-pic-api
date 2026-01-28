@@ -7,6 +7,7 @@ use axum::{
 };
 
 use crate::{
+  middleware::auth::auth_middleware,
   state::{AppState, SharedAppState},
   AppError,
 };
@@ -18,22 +19,6 @@ fn map_picture_service_error(e: super::service::PictureServiceError) -> AppError
     super::service::PictureServiceError::InternalServerError(msg) => AppError::internal_server_error(msg),
     super::service::PictureServiceError::BadRequest(msg) => AppError::bad_request(msg),
   }
-}
-
-async fn auth_middleware(headers: HeaderMap) -> Result<crate::utils::jwt::Claims, AppError> {
-  let auth_header = headers
-    .get(axum::http::header::AUTHORIZATION)
-    .ok_or_else(|| AppError::unauthorized("Authorization header missing"))?
-    .to_str()
-    .map_err(|_| AppError::unauthorized("Invalid authorization header"))?;
-
-  let token = auth_header
-    .strip_prefix("Bearer ")
-    .ok_or_else(|| AppError::unauthorized("Invalid authorization format"))?;
-
-  let claims = crate::utils::jwt::decode_jwt(token).map_err(|_| AppError::unauthorized("Invalid token"))?;
-
-  Ok(claims)
 }
 
 pub fn picture_routes() -> Router<SharedAppState> {
