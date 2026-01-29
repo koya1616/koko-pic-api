@@ -43,7 +43,7 @@ impl S3Storage {
 
     if is_supabase {
       let http_client = HyperClientBuilder::new().build_https();
-      s3_config_builder = s3_config_builder.http_client(http_client);
+      s3_config_builder = s3_config_builder.http_client(http_client).force_path_style(true);
     } else {
       s3_config_builder = s3_config_builder.force_path_style(true);
     }
