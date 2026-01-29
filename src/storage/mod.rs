@@ -113,3 +113,91 @@ impl S3Storage {
     None
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn create_test_storage(endpoint: Option<String>, public_endpoint: Option<String>, bucket: &str) -> S3Storage {
+    let credentials = Credentials::new("test_key", "test_secret", None, None, "test");
+    let credentials_provider = SharedCredentialsProvider::new(credentials);
+
+    let config_builder = aws_config::defaults(BehaviorVersion::latest())
+      .region(Region::new("us-east-1"))
+      .credentials_provider(credentials_provider);
+
+    let config = tokio::runtime::Runtime::new().unwrap().block_on(config_builder.load());
+
+    let s3_config_builder = aws_sdk_s3::config::Builder::from(&config);
+    let client = S3Client::from_conf(s3_config_builder.build());
+
+    S3Storage {
+      client,
+      bucket: bucket.to_string(),
+      endpoint,
+      public_endpoint,
+    }
+  }
+
+  #[test]
+  fn test_extract_key_from_url_with_endpoint() {
+    let storage = create_test_storage(Some("http://localhost:9000".to_string()), None, "dev");
+
+    let url = "http://localhost:9000/dev/pictures/test.jpg";
+    let key = storage.extract_key_from_url(url);
+    assert_eq!(key, Some("pictures/test.jpg".to_string()));
+  }
+
+  #[test]
+  fn test_extract_key_from_url_with_public_endpoint() {
+    let storage = create_test_storage(
+      Some("http://rustfs:9000".to_string()),
+      Some("http://127.0.0.1:9000".to_string()),
+      "dev",
+    );
+
+    let url = "http://127.0.0.1:9000/dev/pictures/test.jpg";
+    let key = storage.extract_key_from_url(url);
+    assert_eq!(key, Some("pictures/test.jpg".to_string()));
+  }
+
+  #[test]
+  fn test_extract_key_from_url_with_supabase() {
+    let storage = create_test_storage(
+      Some("https://project.storage.supabase.co/storage/v1/s3".to_string()),
+      None,
+      "koko-pic",
+    );
+
+    let url = "https://project.storage.supabase.co/storage/v1/s3/koko-pic/pictures/7/test.jpg";
+    let key = storage.extract_key_from_url(url);
+    assert_eq!(key, Some("pictures/7/test.jpg".to_string()));
+  }
+
+  #[test]
+  fn test_extract_key_from_url_aws_s3() {
+    let storage = create_test_storage(None, None, "my-bucket");
+
+    let url = "https://my-bucket.s3.amazonaws.com/uploads/image.png";
+    let key = storage.extract_key_from_url(url);
+    assert_eq!(key, Some("uploads/image.png".to_string()));
+  }
+
+  #[test]
+  fn test_extract_key_from_url_invalid() {
+    let storage = create_test_storage(Some("http://localhost:9000".to_string()), None, "dev");
+
+    let url = "http://example.com/invalid/path.jpg";
+    let key = storage.extract_key_from_url(url);
+    assert_eq!(key, None);
+  }
+
+  #[test]
+  fn test_extract_key_from_url_wrong_bucket() {
+    let storage = create_test_storage(Some("http://localhost:9000".to_string()), None, "dev");
+
+    let url = "http://localhost:9000/production/pictures/test.jpg";
+    let key = storage.extract_key_from_url(url);
+    assert_eq!(key, None);
+  }
+}
