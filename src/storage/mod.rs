@@ -175,6 +175,19 @@ mod tests {
   }
 
   #[test]
+  fn test_extract_key_from_url_with_cloudflare_r2() {
+    let storage = create_test_storage(
+      Some("https://3eee0f3be0c1d2517ddd0a5acd4486e7.r2.cloudflarestorage.com".to_string()),
+      None,
+      "koko-pic",
+    );
+
+    let url = "https://3eee0f3be0c1d2517ddd0a5acd4486e7.r2.cloudflarestorage.com/koko-pic/pictures/test.jpg";
+    let key = storage.extract_key_from_url(url);
+    assert_eq!(key, Some("pictures/test.jpg".to_string()));
+  }
+
+  #[test]
   fn test_extract_key_from_url_aws_s3() {
     let storage = create_test_storage(None, None, "my-bucket");
 
