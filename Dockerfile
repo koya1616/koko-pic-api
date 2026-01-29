@@ -25,6 +25,7 @@ ENV SQLX_OFFLINE=true
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=planner /app/recipe.json recipe.json
@@ -49,6 +50,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # Stage 4: 実行専用（DB情報なし）
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /app/koko-pic-api /usr/local/bin/app
 
 ENV SMTP_HOST=smtp.resend.com
