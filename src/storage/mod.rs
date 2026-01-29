@@ -36,7 +36,12 @@ impl S3Storage {
     }
 
     let config = config_builder.load().await;
-    let mut s3_config_builder = aws_sdk_s3::config::Builder::from(&config).force_path_style(true);
+    let mut s3_config_builder = aws_sdk_s3::config::Builder::from(&config);
+
+    let is_supabase = endpoint.as_ref().map(|e| e.contains("supabase")).unwrap_or(false);
+    if !is_supabase {
+      s3_config_builder = s3_config_builder.force_path_style(true);
+    }
 
     if let Some(ref endpoint_url) = endpoint {
       s3_config_builder = s3_config_builder.endpoint_url(endpoint_url);
