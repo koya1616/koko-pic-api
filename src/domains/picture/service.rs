@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::impl_service_error_conversions;
 use crate::storage::S3Storage;
 
-use super::model::{Picture, PicturesResponse};
+use super::model::Picture;
 use super::repository;
 
 #[derive(Debug)]
@@ -34,7 +34,6 @@ impl_service_error_conversions!(PictureServiceError, InternalServerError);
 
 #[async_trait]
 pub trait PictureService: Send + Sync {
-  async fn get_pictures(&self) -> Result<PicturesResponse, PictureServiceError>;
   async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError>;
   async fn upload_and_create_picture(
     &self,
@@ -59,11 +58,6 @@ impl PictureServiceImpl {
 
 #[async_trait]
 impl PictureService for PictureServiceImpl {
-  async fn get_pictures(&self) -> Result<PicturesResponse, PictureServiceError> {
-    let pictures = repository::find_all(&self.db).await?;
-    Ok(PicturesResponse { pictures })
-  }
-
   async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError> {
     let picture = repository::create(&self.db, user_id, &image_url).await?;
     Ok(picture)
