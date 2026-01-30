@@ -713,7 +713,7 @@ components:
           type: string
           enum: [open, in-progress, completed]
           description: リクエストのステータス
-        placeName:
+        place_name:
           type: string
           description: 場所の名前
         description:
@@ -724,7 +724,7 @@ components:
         - lat
         - lng
         - status
-        - placeName
+        - place_name
         - description
     RequestWithDistance:
       allOf:
@@ -747,7 +747,7 @@ components:
           type: number
           format: double
           description: リクエスト位置の経度
-        placeName:
+        place_name:
           type: string
           description: 場所の名前
         description:
@@ -756,7 +756,7 @@ components:
       required:
         - lat
         - lng
-        - placeName
+        - place_name
         - description
     UpdateRequestInput:
       type: object
@@ -773,9 +773,10 @@ components:
           type: string
           enum: [open, in-progress, completed]
           description: リクエストのステータス
-        placeName:
+        place_name:
           type: string
           description: 場所の名前
+          nullable: true
         description:
           type: string
           description: リクエストの説明
