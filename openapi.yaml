@@ -716,7 +716,6 @@ components:
         placeName:
           type: string
           description: 場所の名前
-          nullable: true
         description:
           type: string
           description: リクエストの説明
@@ -725,6 +724,7 @@ components:
         - lat
         - lng
         - status
+        - placeName
         - description
     RequestWithDistance:
       allOf:
@@ -750,13 +750,13 @@ components:
         placeName:
           type: string
           description: 場所の名前
-          nullable: true
         description:
           type: string
           description: リクエストの説明
       required:
         - lat
         - lng
+        - placeName
         - description
     UpdateRequestInput:
       type: object
@@ -776,7 +776,6 @@ components:
         placeName:
           type: string
           description: 場所の名前
-          nullable: true
         description:
           type: string
           description: リクエストの説明

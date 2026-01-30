@@ -1,0 +1,1 @@
+ALTER TABLE requests ALTER COLUMN place_name SET NOT NULL;

@@ -8,6 +8,10 @@ use crate::{
       model::Picture,
       service::{PictureService, PictureServiceError, PictureServiceImpl},
     },
+    request::{
+      model::{CreateRequestRequest, Request, RequestsResponse},
+      service::RequestService,
+    },
     user::{
       model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerifyEmailResponse},
       repository::{SqlxUserRepository, SqlxVerificationTokenRepository},
@@ -57,12 +61,23 @@ pub trait AppState: Clone + Send + Sync + 'static {
     picture_id: i32,
     user_id: i32,
   ) -> impl std::future::Future<Output = Result<(), PictureServiceError>> + Send;
+  fn get_requests(
+    &self,
+    user_lat: Option<f64>,
+    user_lng: Option<f64>,
+  ) -> impl std::future::Future<Output = Result<RequestsResponse, sqlx::Error>> + Send;
+  fn create_request(
+    &self,
+    user_id: i32,
+    req: CreateRequestRequest,
+  ) -> impl std::future::Future<Output = Result<Request, sqlx::Error>> + Send;
 }
 
 #[derive(Clone)]
 pub struct SharedAppState {
   pub user_service: Arc<UserServiceImpl<SqlxUserRepository, SqlxVerificationTokenRepository>>,
   pub picture_service: Arc<PictureServiceImpl>,
+  pub request_service: Arc<RequestService>,
 }
 
 impl SharedAppState {
@@ -75,11 +90,13 @@ impl SharedAppState {
       email_service,
     ));
 
-    let picture_service = Arc::new(PictureServiceImpl::new(pool, storage));
+    let picture_service = Arc::new(PictureServiceImpl::new(pool.clone(), storage));
+    let request_service = Arc::new(RequestService::new(pool));
 
     Self {
       user_service,
       picture_service,
+      request_service,
     }
   }
 }
@@ -128,5 +145,13 @@ impl AppState for SharedAppState {
 
   async fn delete_picture(&self, picture_id: i32, user_id: i32) -> Result<(), PictureServiceError> {
     self.picture_service.delete_picture(picture_id, user_id).await
+  }
+
+  async fn get_requests(&self, user_lat: Option<f64>, user_lng: Option<f64>) -> Result<RequestsResponse, sqlx::Error> {
+    self.request_service.get_requests(user_lat, user_lng).await
+  }
+
+  async fn create_request(&self, user_id: i32, req: CreateRequestRequest) -> Result<Request, sqlx::Error> {
+    self.request_service.create_request(user_id, req).await
   }
 }

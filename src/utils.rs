@@ -3,6 +3,7 @@ use sha2::{Digest, Sha256};
 use validator::ValidationError;
 
 pub mod error;
+pub mod geo;
 pub mod jwt;
 
 pub fn hash_password(password: &str) -> String {
