@@ -59,8 +59,16 @@ impl From<AppError> for StatusCode {
 
 impl From<sqlx::Error> for AppError {
   fn from(error: sqlx::Error) -> Self {
-    tracing::error!("Database error: {:?}", error);
-    AppError::internal_server_error("Internal server error occurred")
+    match error {
+      sqlx::Error::RowNotFound => {
+        tracing::debug!("Row not found in database");
+        AppError::not_found("Resource not found")
+      }
+      _ => {
+        tracing::error!("Database error: {:?}", error);
+        AppError::internal_server_error("Internal server error occurred")
+      }
+    }
   }
 }
 
