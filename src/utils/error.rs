@@ -31,6 +31,10 @@ impl AppError {
     Self::new(StatusCode::NOT_FOUND, message)
   }
 
+  pub fn forbidden(message: impl Into<String>) -> Self {
+    Self::new(StatusCode::FORBIDDEN, message)
+  }
+
   pub fn internal_server_error(message: impl Into<String>) -> Self {
     Self::new(StatusCode::INTERNAL_SERVER_ERROR, message)
   }
@@ -53,7 +57,6 @@ impl From<AppError> for StatusCode {
   }
 }
 
-// Implement From for common error types
 impl From<sqlx::Error> for AppError {
   fn from(error: sqlx::Error) -> Self {
     tracing::error!("Database error: {:?}", error);
@@ -72,5 +75,32 @@ impl From<std::string::FromUtf8Error> for AppError {
   fn from(error: std::string::FromUtf8Error) -> Self {
     tracing::error!("UTF8 error: {:?}", error);
     AppError::bad_request("Invalid UTF8 encoding")
+  }
+}
+
+impl From<crate::domains::user::service::UserServiceError> for AppError {
+  fn from(error: crate::domains::user::service::UserServiceError) -> Self {
+    use crate::domains::user::service::UserServiceError;
+    match error {
+      UserServiceError::ValidationError(msg) => AppError::bad_request(msg),
+      UserServiceError::InternalServerError(msg) => AppError::internal_server_error(msg),
+      UserServiceError::Unauthorized(msg) => AppError::unauthorized(msg),
+      UserServiceError::InvalidToken(msg) => AppError::bad_request(msg),
+      UserServiceError::TokenExpired(msg) => AppError::new(StatusCode::GONE, msg),
+      UserServiceError::TokenAlreadyUsed(msg) => AppError::new(StatusCode::CONFLICT, msg),
+      UserServiceError::UserNotFound(msg) => AppError::not_found(msg),
+    }
+  }
+}
+
+impl From<crate::domains::picture::service::PictureServiceError> for AppError {
+  fn from(error: crate::domains::picture::service::PictureServiceError) -> Self {
+    use crate::domains::picture::service::PictureServiceError;
+    match error {
+      PictureServiceError::InternalServerError(msg) => AppError::internal_server_error(msg),
+      PictureServiceError::BadRequest(msg) => AppError::bad_request(msg),
+      PictureServiceError::NotFound(msg) => AppError::not_found(msg),
+      PictureServiceError::Forbidden(msg) => AppError::forbidden(msg),
+    }
   }
 }

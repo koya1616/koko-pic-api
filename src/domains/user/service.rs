@@ -3,9 +3,11 @@ use chrono::{Duration, Utc};
 use std::error::Error;
 use validator::Validate;
 
+use crate::impl_service_error_conversions;
+
 use super::{
   model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerificationToken, VerifyEmailResponse},
-  repository::{RepositoryError, UserRepository, VerificationTokenRepository},
+  repository::{UserRepository, VerificationTokenRepository},
 };
 use crate::{
   email::EmailService,
@@ -39,21 +41,7 @@ impl std::fmt::Display for UserServiceError {
   }
 }
 
-impl From<RepositoryError> for UserServiceError {
-  fn from(err: RepositoryError) -> Self {
-    match err {
-      RepositoryError::DatabaseError(e) => UserServiceError::InternalServerError(format!("Database error: {}", e)),
-      RepositoryError::NotFound(msg) => UserServiceError::UserNotFound(msg),
-      RepositoryError::Conflict(msg) => UserServiceError::InternalServerError(msg),
-    }
-  }
-}
-
-impl From<sqlx::Error> for UserServiceError {
-  fn from(err: sqlx::Error) -> Self {
-    UserServiceError::InternalServerError(format!("Database error: {}", err))
-  }
-}
+impl_service_error_conversions!(UserServiceError, InternalServerError, UserNotFound);
 
 #[async_trait]
 pub trait UserService: Send + Sync {
@@ -264,28 +252,26 @@ mod tests {
       model::{CreateUserRequest, VerificationToken},
       repository::{SqlxUserRepository, SqlxVerificationTokenRepository},
     },
-    email::{EmailService, SmtpConfig},
+    email::EmailService,
   };
   use sqlx::PgPool;
 
-  fn create_test_email_service() -> EmailService {
-    let smtp_config = SmtpConfig {
-      host: "localhost".to_string(),
-      port: 1025,
-      username: "test".to_string(),
-      password: "test".to_string(),
-      from_email: "noreply@test.com".to_string(),
-    };
-    EmailService::new(smtp_config).expect("Failed to create test email service")
+  async fn create_test_email_service() -> EmailService {
+    crate::utils::init_email_service()
+      .await
+      .expect("Failed to create test email service")
+  }
+
+  async fn create_test_service(pool: PgPool) -> UserServiceImpl<SqlxUserRepository, SqlxVerificationTokenRepository> {
+    let user_repo = SqlxUserRepository::new(pool.clone());
+    let token_repo = SqlxVerificationTokenRepository::new(pool);
+    let email_service = create_test_email_service().await;
+    UserServiceImpl::new(user_repo, token_repo, email_service)
   }
 
   #[sqlx::test(migrations = "./migrations")]
   async fn test_create_user_with_verification(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
-    let user_repo = SqlxUserRepository::new(pool.clone());
-    let token_repo = SqlxVerificationTokenRepository::new(pool);
-    let email_service = create_test_email_service();
-
-    let service = UserServiceImpl::new(user_repo, token_repo, email_service);
+    let service = create_test_service(pool).await;
 
     let req = CreateUserRequest {
       email: "test@example.com".to_string(),
@@ -308,11 +294,7 @@ mod tests {
 
     let verification_token = VerificationToken::create(&pool, user.id, "email_verification").await?;
 
-    let user_repo = SqlxUserRepository::new(pool.clone());
-    let token_repo = SqlxVerificationTokenRepository::new(pool.clone());
-    let email_service = create_test_email_service();
-
-    let service = UserServiceImpl::new(user_repo, token_repo, email_service);
+    let service = create_test_service(pool.clone()).await;
 
     let verify_response = service.verify_email(verification_token.token).await?;
 
@@ -332,10 +314,7 @@ mod tests {
     let user = User::create(&pool, "unverified@example.com", "Unverified User", "password123").await?;
     assert!(!user.email_verified);
 
-    let user_repo = SqlxUserRepository::new(pool.clone());
-    let token_repo = SqlxVerificationTokenRepository::new(pool);
-    let email_service = create_test_email_service();
-    let service = UserServiceImpl::new(user_repo, token_repo, email_service);
+    let service = create_test_service(pool).await;
 
     let login_req = LoginRequest {
       email: "unverified@example.com".to_string(),

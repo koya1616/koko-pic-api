@@ -9,16 +9,29 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
       - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
       - PORT=8000
+      - FRONTEND_URL=http://localhost:1420
+
       # 開発環境用メール設定
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
       - SMTP_USERNAME=test
       - SMTP_PASSWORD=test
       - SMTP_FROM_EMAIL=koko-pic@example.com
-      - FRONTEND_URL=http://localhost:1420
+
+      # ======================
+      # S3 (RustFS)
+      # ======================
+      - S3_ENDPOINT=http://rustfs:9000
+      - S3_PUBLIC_ENDPOINT=http://127.0.0.1:9000
+      - S3_ACCESS_KEY=kFPuRNwomSyA8Zlx0qHn
+      - S3_SECRET_KEY=MdpgKtYTPbQSBND0VhGH28WaIy5Rx3rifOZqU9ju
+      - S3_REGION=us-east-1
+      - S3_BUCKET=dev
+
     depends_on:
       - postgres
       - mailhog
+      - rustfs
     volumes:
       - .:/app
       - cargo-cache:/usr/local/cargo/registry
@@ -47,7 +60,24 @@ services:
       - MH_STORAGE=maildir
     restart: unless-stopped
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: rustfs
+    command: /data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - RUSTFS_ACCESS_KEY=rustfs
+      - RUSTFS_SECRET_KEY=rustfssecret
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_VOLUMES=/data
+    volumes:
+      - rustfs_data:/data
+    restart: unless-stopped
+
 volumes:
   cargo-cache:
   target-cache:
   postgres_data:
+  rustfs_data:

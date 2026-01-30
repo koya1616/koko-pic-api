@@ -1,6 +1,6 @@
 use axum::{
   extract::{Json, State},
-  http::{HeaderMap, StatusCode},
+  http::HeaderMap,
   response::Json as JsonResponse,
   routing::{get, post, Router},
 };
@@ -8,38 +8,10 @@ use validator::Validate;
 
 use super::model::{CreateUserRequest, LoginRequest, ResendVerificationRequest};
 use crate::{
+  middleware::auth::auth_middleware,
   state::{AppState, SharedAppState},
-  utils::jwt::Claims,
   AppError,
 };
-
-fn map_user_service_error(e: crate::domains::user::service::UserServiceError) -> AppError {
-  match e {
-    crate::domains::user::service::UserServiceError::ValidationError(msg) => AppError::bad_request(msg),
-    crate::domains::user::service::UserServiceError::InternalServerError(msg) => AppError::internal_server_error(msg),
-    crate::domains::user::service::UserServiceError::Unauthorized(msg) => AppError::unauthorized(msg),
-    crate::domains::user::service::UserServiceError::InvalidToken(msg) => AppError::bad_request(msg),
-    crate::domains::user::service::UserServiceError::TokenExpired(msg) => AppError::new(StatusCode::GONE, msg),
-    crate::domains::user::service::UserServiceError::TokenAlreadyUsed(msg) => AppError::new(StatusCode::CONFLICT, msg),
-    crate::domains::user::service::UserServiceError::UserNotFound(msg) => AppError::not_found(msg),
-  }
-}
-
-async fn auth_middleware(headers: HeaderMap) -> Result<Claims, AppError> {
-  let auth_header = headers
-    .get(axum::http::header::AUTHORIZATION)
-    .ok_or_else(|| AppError::unauthorized("Authorization header missing"))?
-    .to_str()
-    .map_err(|_| AppError::unauthorized("Invalid authorization header"))?;
-
-  let token = auth_header
-    .strip_prefix("Bearer ")
-    .ok_or_else(|| AppError::unauthorized("Invalid authorization format"))?;
-
-  let claims = crate::utils::jwt::decode_jwt(token).map_err(|_| AppError::unauthorized("Invalid token"))?;
-
-  Ok(claims)
-}
 
 pub fn user_routes() -> Router<SharedAppState> {
   Router::new()
@@ -54,33 +26,21 @@ pub async fn create_user_handler(
   State(state): State<SharedAppState>,
   Json(payload): Json<CreateUserRequest>,
 ) -> Result<JsonResponse<super::model::User>, AppError> {
-  state
-    .create_user(payload)
-    .await
-    .map(JsonResponse)
-    .map_err(map_user_service_error)
+  state.create_user(payload).await.map(JsonResponse).map_err(Into::into)
 }
 
 pub async fn login_handler(
   State(state): State<SharedAppState>,
   Json(payload): Json<LoginRequest>,
 ) -> Result<JsonResponse<super::model::LoginResponse>, AppError> {
-  state
-    .login(payload)
-    .await
-    .map(JsonResponse)
-    .map_err(map_user_service_error)
+  state.login(payload).await.map(JsonResponse).map_err(Into::into)
 }
 
 pub async fn verify_email_handler(
   State(state): State<SharedAppState>,
   axum::extract::Path(token): axum::extract::Path<String>,
 ) -> Result<JsonResponse<super::model::VerifyEmailResponse>, AppError> {
-  state
-    .verify_email(token)
-    .await
-    .map(JsonResponse)
-    .map_err(map_user_service_error)
+  state.verify_email(token).await.map(JsonResponse).map_err(Into::into)
 }
 
 pub async fn get_current_user_handler(
@@ -94,7 +54,7 @@ pub async fn get_current_user_handler(
     .get_user_by_id(user_id)
     .await
     .map(JsonResponse)
-    .map_err(map_user_service_error)
+    .map_err(Into::into)
 }
 
 pub async fn resend_verification_handler(
@@ -109,7 +69,7 @@ pub async fn resend_verification_handler(
     .send_verification_email_by_email(payload.email)
     .await
     .map(|_| ())
-    .map_err(map_user_service_error)
+    .map_err(Into::into)
 }
 
 #[cfg(test)]

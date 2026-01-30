@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.8.8", features = ["macros"] }
+axum = { version = "0.8.8", features = ["macros", "multipart"] }
 tokio = { version = "1.0", features = ["full"] }
 anyhow = "1.0"
 tracing = "0.1"
@@ -22,10 +22,14 @@ regex = "1.0"
 uuid = { version = "1.0", features = ["v4"] }
 lettre = { version = "0.11", features = ["tokio1-native-tls", "smtp-transport", "pool", "builder"] }
 tower-http = { version = "0.6", features = ["cors"] }
+aws-config = "1.5"
+aws-sdk-s3 = "1.120.0"
+aws-smithy-runtime = { version = "1.7", features = ["client"] }
 
 [dev-dependencies]
 axum-macros = "0.5"
 tower = { version = "0.5", features = ["util"] }
+serial_test = "3.2"
 
 [profile.release]
 lto = true

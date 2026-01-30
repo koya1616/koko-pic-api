@@ -3,12 +3,19 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::{
-  domains::user::{
-    model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerifyEmailResponse},
-    repository::{SqlxUserRepository, SqlxVerificationTokenRepository},
-    service::{UserService, UserServiceError, UserServiceImpl},
+  domains::{
+    picture::{
+      model::{Picture, PicturesResponse},
+      service::{PictureService, PictureServiceError, PictureServiceImpl},
+    },
+    user::{
+      model::{CreateUserRequest, LoginRequest, LoginResponse, User, VerifyEmailResponse},
+      repository::{SqlxUserRepository, SqlxVerificationTokenRepository},
+      service::{UserService, UserServiceError, UserServiceImpl},
+    },
   },
   email::EmailService,
+  storage::S3Storage,
 };
 
 pub trait AppState: Clone + Send + Sync + 'static {
@@ -33,24 +40,48 @@ pub trait AppState: Clone + Send + Sync + 'static {
     email: String,
   ) -> impl std::future::Future<Output = Result<(), UserServiceError>> + Send;
   fn get_user_by_id(&self, user_id: i32) -> impl std::future::Future<Output = Result<User, UserServiceError>> + Send;
+  fn get_pictures(&self) -> impl std::future::Future<Output = Result<PicturesResponse, PictureServiceError>> + Send;
+  fn create_picture(
+    &self,
+    user_id: i32,
+    image_url: String,
+  ) -> impl std::future::Future<Output = Result<Picture, PictureServiceError>> + Send;
+  fn upload_and_create_picture(
+    &self,
+    user_id: i32,
+    file_data: Vec<u8>,
+    file_name: String,
+    content_type: String,
+  ) -> impl std::future::Future<Output = Result<Picture, PictureServiceError>> + Send;
+  fn delete_picture(
+    &self,
+    picture_id: i32,
+    user_id: i32,
+  ) -> impl std::future::Future<Output = Result<(), PictureServiceError>> + Send;
 }
 
 #[derive(Clone)]
 pub struct SharedAppState {
   pub user_service: Arc<UserServiceImpl<SqlxUserRepository, SqlxVerificationTokenRepository>>,
+  pub picture_service: Arc<PictureServiceImpl>,
 }
 
 impl SharedAppState {
-  pub async fn new(pool: PgPool, email_service: EmailService) -> Self {
+  pub async fn new(pool: PgPool, email_service: EmailService, storage: S3Storage) -> Self {
     let user_repository = SqlxUserRepository::new(pool.clone());
-    let verification_token_repository = SqlxVerificationTokenRepository::new(pool);
+    let verification_token_repository = SqlxVerificationTokenRepository::new(pool.clone());
     let user_service = Arc::new(UserServiceImpl::new(
       user_repository,
       verification_token_repository,
       email_service,
     ));
 
-    Self { user_service }
+    let picture_service = Arc::new(PictureServiceImpl::new(pool, storage));
+
+    Self {
+      user_service,
+      picture_service,
+    }
   }
 }
 
@@ -77,5 +108,30 @@ impl AppState for SharedAppState {
 
   async fn get_user_by_id(&self, user_id: i32) -> Result<User, UserServiceError> {
     self.user_service.get_user_by_id(user_id).await
+  }
+
+  async fn get_pictures(&self) -> Result<PicturesResponse, PictureServiceError> {
+    self.picture_service.get_pictures().await
+  }
+
+  async fn create_picture(&self, user_id: i32, image_url: String) -> Result<Picture, PictureServiceError> {
+    self.picture_service.create_picture(user_id, image_url).await
+  }
+
+  async fn upload_and_create_picture(
+    &self,
+    user_id: i32,
+    file_data: Vec<u8>,
+    file_name: String,
+    content_type: String,
+  ) -> Result<Picture, PictureServiceError> {
+    self
+      .picture_service
+      .upload_and_create_picture(user_id, file_data, file_name, content_type)
+      .await
+  }
+
+  async fn delete_picture(&self, picture_id: i32, user_id: i32) -> Result<(), PictureServiceError> {
+    self.picture_service.delete_picture(picture_id, user_id).await
   }
 }
