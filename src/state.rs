@@ -71,6 +71,10 @@ pub trait AppState: Clone + Send + Sync + 'static {
     user_id: i32,
     req: CreateRequestRequest,
   ) -> impl std::future::Future<Output = Result<Request, sqlx::Error>> + Send;
+  fn get_request_by_id(
+    &self,
+    request_id: i32,
+  ) -> impl std::future::Future<Output = Result<Request, sqlx::Error>> + Send;
 }
 
 #[derive(Clone)]
@@ -153,5 +157,9 @@ impl AppState for SharedAppState {
 
   async fn create_request(&self, user_id: i32, req: CreateRequestRequest) -> Result<Request, sqlx::Error> {
     self.request_service.create_request(user_id, req).await
+  }
+
+  async fn get_request_by_id(&self, request_id: i32) -> Result<Request, sqlx::Error> {
+    self.request_service.get_request_by_id(request_id).await
   }
 }

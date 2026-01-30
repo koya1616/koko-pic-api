@@ -1,5 +1,5 @@
 use axum::{
-  extract::{Json, Query, State},
+  extract::{Json, Path, Query, State},
   http::HeaderMap,
   response::Json as JsonResponse,
   routing::{get, post},
@@ -25,6 +25,7 @@ pub fn request_routes() -> Router<SharedAppState> {
   Router::new()
     .route("/requests", get(get_requests_handler))
     .route("/requests", post(create_request_handler))
+    .route("/requests/{request_id}", get(get_request_by_id_handler))
 }
 
 pub async fn get_requests_handler(
@@ -52,6 +53,17 @@ pub async fn create_request_handler(
 
   state
     .create_request(user_id, payload)
+    .await
+    .map(JsonResponse)
+    .map_err(Into::into)
+}
+
+pub async fn get_request_by_id_handler(
+  State(state): State<SharedAppState>,
+  Path(request_id): Path<i32>,
+) -> Result<JsonResponse<Request>, AppError> {
+  state
+    .get_request_by_id(request_id)
     .await
     .map(JsonResponse)
     .map_err(Into::into)
@@ -591,6 +603,47 @@ mod tests {
     for i in 0..distances.len() - 1 {
       assert!(distances[i] <= distances[i + 1]);
     }
+
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn get_request_by_id_success(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool.clone()).await;
+
+    let user =
+      crate::domains::user::model::User::create(&pool, "get-by-id@example.com", "Get By ID", "password123").await?;
+    let created = super::super::repository::create(
+      &pool,
+      user.id,
+      35.6812,
+      139.7671,
+      "東京タワー".to_string(),
+      "テスト説明".to_string(),
+    )
+    .await?;
+
+    let (status, body) = get(app, &format!("/api/v1/requests/{}", created.id)).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let response: super::super::model::Request = serde_json::from_slice(&body).expect("deserialize response");
+    assert_eq!(response.id, created.id);
+    assert_eq!(response.user_id, user.id);
+    assert_eq!(response.lat, 35.6812);
+    assert_eq!(response.lng, 139.7671);
+    assert_eq!(response.place_name, "東京タワー");
+    assert_eq!(response.description, "テスト説明");
+    assert_eq!(response.status, "open");
+
+    Ok(())
+  }
+
+  #[sqlx::test(migrations = "./migrations")]
+  async fn get_request_by_id_not_found(pool: sqlx::PgPool) -> Result<(), sqlx::Error> {
+    let app = app_with_pool(pool).await;
+
+    let (status, _body) = get(app, "/api/v1/requests/99999").await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
 
     Ok(())
   }

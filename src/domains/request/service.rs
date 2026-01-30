@@ -36,4 +36,13 @@ impl RequestService {
   ) -> Result<crate::domains::request::model::Request, sqlx::Error> {
     repository::create(&self.pool, user_id, req.lat, req.lng, req.place_name, req.description).await
   }
+
+  pub async fn get_request_by_id(
+    &self,
+    request_id: i32,
+  ) -> Result<crate::domains::request::model::Request, sqlx::Error> {
+    repository::find_by_id(&self.pool, request_id)
+      .await?
+      .ok_or_else(|| sqlx::Error::RowNotFound)
+  }
 }
