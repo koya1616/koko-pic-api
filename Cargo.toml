@@ -27,9 +27,9 @@ aws-sdk-s3 = "1.120.0"
 aws-smithy-runtime = { version = "1.7", features = ["client"] }
 
 [dev-dependencies]
-axum-macros = "0.5"
-tower = { version = "0.5", features = ["util"] }
-serial_test = "3.2"
+axum-macros = "0.5.0"
+tower = { version = "0.5.3", features = ["util"] }
+serial_test = "3.3.1"
 
 [profile.release]
 lto = true
